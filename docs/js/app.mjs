@@ -12,6 +12,13 @@ const FORCE_TEAM = params.get('team') === '1';
 const LETTERS = ['A', 'B', 'C', 'D'];
 const AV = Object.fromEntries(AVATARS.map(a => [a.id, a]));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Android TV app (its WebView adds "VulkanSpiritTV" to the user agent) or ?tv=1: remote-control mode
+const TV = (() => {
+  try { if (params.get('tv') === '1') sessionStorage.setItem('vs-tv', '1'); } catch { /* */ }
+  try { if (sessionStorage.getItem('vs-tv') === '1') return true; } catch { /* */ }
+  return /VulkanSpiritTV/.test(navigator.userAgent);
+})();
+if (TV) document.documentElement.classList.add('tv');
 
 const store = {
   get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
@@ -223,7 +230,7 @@ function viewHome() {
   return `${header()}<main class="home">
   <section class="hero"><img src="logo.png" alt="Vulkan Spirit Wappen" width="230" height="207"><div><h1><span>Live long and quiz</span>Vulkan Spirit Quiz</h1>
     <p>Das Star-Trek-Quiz für Conventions und Fan-Treffen: Tretet als Team gegen andere Fans an, sammelt Punkte und gewinnt Preise! Mitmachen per QR-Code mit dem Handy – ohne Anmeldung, ohne App.</p></div></section>
-  <section class="card join-card"><h2>Team beitreten</h2>
+  <section class="card join-card tv-hide"><h2>Team beitreten</h2>
     <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="SPIELCODE" value="${esc(H.code)}" aria-label="Sechsstelliger Spielcode">
     <button class="btn primary">Mitspielen →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>
   <section class="card"><h2>Quiz leiten</h2><p class="muted">Mission wählen – jede Mission mischt alle zehn Themen.</p>
@@ -259,15 +266,15 @@ function viewHost() {
   if (d.phase === 'lobby') {
     body = `${viewLobbyShared(d, true)}
     <section class="card controls"><div class="row">
-      <button class="btn" data-copy="team">Link für Teams kopieren</button><button class="btn" data-act="saveqr">QR-Code speichern ↓</button>
-      <a class="btn" href="./?room=${esc(d.code)}&screen=1" target="_blank" rel="noopener">Bildschirm öffnen ↗</a><button class="btn" data-copy="host">Leitungslink sichern</button></div>
+      <button class="btn tv-hide" data-copy="team">Link für Teams kopieren</button><button class="btn tv-hide" data-act="saveqr">QR-Code speichern ↓</button>
+      <a class="btn tv-hide" href="./?room=${esc(d.code)}&screen=1" target="_blank" rel="noopener">Bildschirm öffnen ↗</a><button class="btn tv-hide" data-copy="host">Leitungslink sichern</button></div>
       <details class="settings" data-settings ${S.settingsOpen ? 'open' : ''}><summary>Mission oder Preis ändern</summary>
         <div class="missions small" data-group="lobby-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.lobbyPack ?? d.pack), 'lpack')).join('')}</div>
         <label class="field">Preis<input data-lobbyprize maxlength="80" value="${esc(S.lobbyPrize ?? d.prize)}"></label>
         <button class="btn" data-act="settings">Übernehmen</button></details>
       <button class="btn primary big" data-act="start" ${d.teams.length && !S.busy ? '' : 'disabled'}>Spiel starten →</button>
       ${d.teams.length ? '' : '<p class="muted">Sobald ein Team beigetreten ist, kann es losgehen.</p>'}${hostHint()}
-      <p class="muted small">Tipp: Leertaste oder Enter = Weiter / Auflösen.</p></section>`;
+      <p class="muted small tv-hide">Tipp: Leertaste oder Enter = Weiter / Auflösen.</p><p class="muted small tv-only">Fernbedienung: Pfeiltasten zum Auswählen, OK zum Bestätigen. Die Teams scannen den QR-Code mit dem Handy.</p></section>`;
   } else if (d.phase === 'question' || d.phase === 'reveal') {
     const Q = d.question, reveal = d.phase === 'reveal', last = d.q + 1 >= d.total;
     body = `<section class="stage">${progress(d)}${questionHead(d)}
@@ -315,22 +322,22 @@ function viewFinished(d, who) {
     return `<section class="result ${share >= .5 ? 'won' : ''}"><img class="gif" src="media/${share >= .5 ? 'win' : 'lose'}.gif" alt="${share >= .5 ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion'}">
       <small>MISSION ${esc(d.mission)} ABGESCHLOSSEN</small><h2>${rank[0].toUpperCase()}</h2>
       <p class="big">${fmt(me.score)} von ${fmt(max)} möglichen Punkten</p><p class="muted">${rank[1]}</p>
-      ${me.score > 0 ? `<button class="btn" data-diploma="${esc(me.id)}">Diplom herunterladen ↓</button>` : ''}</section>
+      ${me.score > 0 ? `<button class="btn tv-hide" data-diploma="${esc(me.id)}">Diplom herunterladen ↓</button>` : ''}</section>
       <section class="card"><h3>Nächste Mission</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === pick, 'rpack')).join('')}</div>
       <button class="btn primary big" data-act="restart">Mission starten →</button></section>`;
   }
   if (who === 'team' && me) {
     top = `<section class="result ${iWon ? 'won' : ''}"><img class="gif" src="media/${iWon ? 'win' : 'lose'}.gif" alt="${iWon ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion'}">
       <h2>${iWon ? 'SIEG AUF DER BRÜCKE' : 'HELDEN DER NÄCHSTEN RUNDE'}</h2>
-      <p class="big">Platz ${me.place} · ${fmt(me.score)} Punkte</p>${iWon ? `<p>Preis: <b>${esc(d.prize)}</b></p><button class="btn primary" data-diploma="${esc(me.id)}">Siegerdiplom herunterladen ↓</button>` : '<p class="muted">Heute kein Pokal. Dafür eine hervorragende Origin-Story.</p>'}</section>`;
+      <p class="big">Platz ${me.place} · ${fmt(me.score)} Punkte</p>${iWon ? `<p>Preis: <b>${esc(d.prize)}</b></p><button class="btn primary tv-hide" data-diploma="${esc(me.id)}">Siegerdiplom herunterladen ↓</button>` : '<p class="muted">Heute kein Pokal. Dafür eine hervorragende Origin-Story.</p>'}</section>`;
   } else {
     top = `<section class="result won"><small>SIEGERTEAM${win.length > 1 ? 'S' : ''}</small>
       ${win.length ? win.map(w => `<div class="winner">${avatarHtml(w.avatar, w.id, 'l')}<h2>${esc(w.name)}</h2></div>`).join('') : '<h2>Kein Siegerteam – alle Antworten sind im Transporterpuffer verschwunden.</h2>'}
       ${win.length ? `<p class="big">${fmt(win[0].score)} Punkte · 🏆 ${esc(d.prize)}</p>` : ''}
       ${who === 'screen' ? '<img class="gif" src="media/win.gif" alt="Picard applaudiert">' : ''}</section>`;
   }
-  const hostTools = who === 'host' ? `<section class="card"><div class="row">${win.map(w => `<button class="btn primary" data-diploma="${esc(w.id)}">Diplom für ${esc(w.name)} ↓</button>`).join('')}
-     <button class="btn" data-act="csv">Ergebnis als CSV speichern ↓</button></div>
+  const hostTools = who === 'host' ? `<section class="card"><div class="row">${win.map(w => `<button class="btn primary tv-hide" data-diploma="${esc(w.id)}">Diplom für ${esc(w.name)} ↓</button>`).join('')}
+     <button class="btn tv-hide" data-act="csv">Ergebnis als CSV speichern ↓</button></div>
      <h3>Nächste Mission – gleiche Teams</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.restartPack ?? Math.min(d.pack + 1, MISSIONS.length - 1)), 'rpack')).join('')}</div>
      <button class="btn primary big" data-act="restart">Neue Mission starten →</button></section>` : '';
   return `${top}<section class="card"><h3>ENDSTAND · ${esc(d.mission)}</h3>${scoreList(d)}</section>${hostTools}`;
@@ -395,6 +402,14 @@ const err = () => (S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` :
 
 // ---------- render ----------
 let zoomSrc = '';
+function focusSelector(el) {
+  const q = v => CSS.escape(String(v));
+  const k = Object.keys(el.dataset)[0];
+  if (k) return `[data-${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}="${q(el.dataset[k])}"]`;
+  if (el.name) return `[name="${q(el.name)}"][value="${q(el.value)}"]`;
+  if (el.getAttribute('href')) return `a[href="${q(el.getAttribute('href'))}"]`;
+  return '';
+}
 function render(force = false) {
   let html;
   if (!ROOM) html = viewHome();
@@ -405,11 +420,14 @@ function render(force = false) {
   if (S.toast) html += `<div class="toast" role="status">${esc(S.toast)}</div>`;
   if (zoomSrc) html += `<div class="zoom" data-unzoom><img src="${zoomSrc}" alt="Vergrößertes Fragenbild"><button class="btn" data-unzoom>Schließen</button></div>`;
   if (!force && html === S.lastHtml) { tick(); return; }
-  // keep focus / typing state of inputs across re-renders
-  const active = document.activeElement, key = active?.dataset && Object.keys(active.dataset)[0], sel = active && 'selectionStart' in active ? [active.selectionStart, active.selectionEnd] : null;
+  // keep focus / typing state across re-renders (the exact same control, e.g. the 3rd mission card)
+  const active = document.activeElement, sel = active && 'selectionStart' in active ? [active.selectionStart, active.selectionEnd] : null;
+  const focusSel = active && active !== document.body && $app.contains(active) ? focusSelector(active) : '';
   if (html !== S.lastHtml) { $app.innerHTML = html; S.lastHtml = html; }
   document.body.className = ROOM ? (role() === 'screen' ? 'is-screen' : '') : 'is-home';
-  if (key) { const el = $app.querySelector(`[data-${key.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}]`); if (el && el !== document.activeElement) { el.focus(); if (sel && el.setSelectionRange) try { el.setSelectionRange(...sel); } catch { /* */ } } }
+  const el = focusSel && $app.querySelector(focusSel);
+  if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); if (sel && el.setSelectionRange) try { el.setSelectionRange(...sel); } catch { /* */ } }
+  if (TV) tvAutofocus();
   tick();
 }
 // timer + get-ready countdown without re-rendering the page
@@ -506,6 +524,56 @@ $app.addEventListener('submit', e => {
   location.href = './?room=' + code;
 });
 $app.addEventListener('toggle', e => { if (e.target.matches?.('[data-settings]')) S.settingsOpen = e.target.open; }, true);
+
+// ---------- TV remote: arrow keys move between controls, OK presses them ----------
+const FOCUSABLE = 'button:not(:disabled), a[href], input:not([type=file]):not(:disabled), summary';
+function tvItems() {
+  return [...$app.querySelectorAll(FOCUSABLE)].filter(el => {
+    const box = (el.matches('input[type=radio]') ? el.closest('label') : el)?.getBoundingClientRect();
+    return box && box.width > 0 && box.height > 0 && !el.closest('.tv-hide');
+  });
+}
+function tvBox(el) { return (el.matches('input[type=radio]') ? el.closest('label') : el).getBoundingClientRect(); }
+function tvFocus(el) { el.focus({ preventScroll: true }); tvBox(el) && (el.matches('input[type=radio]') ? el.closest('label') : el).scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); }
+// After each screen change, put the remote's focus on the obvious next action – without scrolling,
+// so the QR code and question stay in view. Focus that was placed automatically may move on later
+// (e.g. to "Spiel starten" once the first team has joined); focus the user moved stays put.
+let tvAutoSel = ""; // selector of the control focused automatically (nodes are replaced on re-render)
+function tvAutofocus() {
+  const a = document.activeElement;
+  const userFocus = a && a !== document.body && $app.contains(a) && focusSelector(a) !== tvAutoSel;
+  if (userFocus) return;
+  const el = $app.querySelector((ROOM ? '' : 'input[name=pack]:checked, ') + '[data-unzoom].btn, [data-act="next"]:not(:disabled), [data-act="start"]:not(:disabled), .opt:not(:disabled), [data-act="reveal"]:not(:disabled), [data-act="restart"], [data-act="create"]');
+  if (el && el !== a) {
+    el.focus({ preventScroll: true }); tvAutoSel = focusSelector(el);
+    if (el.matches('[data-act="next"], [data-act="reveal"]')) el.scrollIntoView({ block: 'nearest' });
+  }
+  else if (!el) tvAutoSel = "";
+}
+if (TV) document.addEventListener('keydown', e => {
+  const cur = document.activeElement;
+  if (e.key === 'Enter' && cur?.matches('input[type=radio]')) { e.preventDefault(); cur.click(); return; }
+  const dir = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+  if (!dir) return;
+  if (cur?.matches('input:not([type=radio])') && dir[1] === 0) return; // left/right moves the text cursor
+  const items = tvItems();
+  e.preventDefault();
+  tvAutoSel = ""; // the user is steering now
+  if (!items.includes(cur)) { const first = items.find(x => x.closest('main')); if (first) tvFocus(first); return; }
+  const r = tvBox(cur), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const el of items) {
+    if (el === cur) continue;
+    const b = tvBox(el), dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
+    const along = dx * dir[0] + dy * dir[1];
+    if (along <= 2) continue;
+    const score = along + 2.5 * Math.abs(dx * dir[1] + dy * dir[0]);
+    if (score < bestScore) { bestScore = score; best = el; }
+  }
+  if (best) tvFocus(best);
+  else window.scrollBy({ top: dir[1] * 240, behavior: 'smooth' }); // nothing further that way: scroll the page
+}, true);
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && zoomSrc) { zoomSrc = ''; render(true); return; }
   const d = S.data, el = document.activeElement;
@@ -513,7 +581,7 @@ document.addEventListener('keydown', e => {
   // A–D / 1–4 answer, Space / Enter / → move the host (or solo player) on
   const k = e.key.toLowerCase(), choice = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : '1234'.indexOf(k);
   if (choice >= 0 && role() === 'team') { $app.querySelector(`[data-choice="${choice}"]:not(:disabled)`)?.click(); return; }
-  if ([' ', 'enter', 'arrowright'].includes(k) && (role() === 'host' || d.solo)) {
+  if ([' ', 'enter', ...(TV ? [] : ['arrowright'])].includes(k) && (role() === 'host' || d.solo)) {
     const btn = $app.querySelector('[data-act="start"], [data-act="next"], [data-act="reveal"]');
     if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
   }

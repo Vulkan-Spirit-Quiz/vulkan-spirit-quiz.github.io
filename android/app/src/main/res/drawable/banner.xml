@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV home-screen banner (320x180): LCARS bars with the Vulkan Spirit crest -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="320dp" android:height="180dp" />
+            <solid android:color="#000000" />
+        </shape>
+    </item>
+    <item android:left="0dp" android:top="0dp" android:width="96dp" android:height="180dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#CC99CC" />
+            <corners android:bottomLeftRadius="40dp" />
+        </shape>
+    </item>
+    <item android:left="96dp" android:top="164dp" android:height="16dp">
+        <shape android:shape="rectangle"><solid android:color="#FF9900" /></shape>
+    </item>
+    <item android:left="200dp" android:top="164dp" android:width="40dp" android:height="16dp">
+        <shape android:shape="rectangle"><solid android:color="#9999FF" /></shape>
+    </item>
+    <item android:left="112dp" android:top="14dp" android:width="160dp" android:height="144dp" android:drawable="@drawable/logo" />
+</layer-list>

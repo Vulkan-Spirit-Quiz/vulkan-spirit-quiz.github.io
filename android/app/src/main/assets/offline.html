@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keine Verbindung</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #000; color: #f6eadb; font: 22px/1.5 sans-serif; text-align: center; }
+  h1 { color: #ff9900; font: 700 48px 'Arial Narrow', sans-serif; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 12px; }
+  .bar { height: 14px; width: 60vw; margin: 0 auto 28px; border-radius: 99px; background: linear-gradient(90deg, #cc99cc 0 40%, #000 40% 41%, #ff9900 41% 48%, #000 48% 49%, #9999ff 49%); }
+  button { margin-top: 28px; font: 700 26px 'Arial Narrow', sans-serif; text-transform: uppercase; padding: 14px 40px; border: 0; border-radius: 99px; background: #ff9900; color: #000; }
+  button:focus { outline: 5px solid #fff; outline-offset: 5px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"></div>
+  <h1>Keine Verbindung zur Flotte</h1>
+  <p>Das Vulkan Spirit Quiz braucht Internet.<br>Bitte die WLAN-Verbindung des Fernsehers prüfen.</p>
+  <button id="retry" autofocus>Erneut versuchen</button>
+</main>
+<script>
+  const go = () => { location.href = 'https://vulkan-spirit-quiz.github.io/'; };
+  document.getElementById('retry').addEventListener('click', go);
+  document.getElementById('retry').focus();
+  setInterval(() => { if (navigator.onLine) go(); }, 10000);
+</script>
+</body>
+</html>

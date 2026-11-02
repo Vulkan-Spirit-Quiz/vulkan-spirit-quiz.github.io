@@ -243,3 +243,25 @@ form[data-form] .btn { flex: none; }
   .teamgrid { grid-template-columns: 1fr; }
   .picks { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; } .pick { font-size: 11px; padding: 8px 2px 6px; } .pick .av-m { width: 50px; height: 50px; }
 }
+
+/* ---------- Android TV app: remote-control focus ---------- */
+.tv-only { display: none; }
+.tv .tv-only { display: block; }
+.tv .tv-hide { display: none !important; }
+.tv :focus { outline: none; }
+.tv .btn:focus, .tv .opt:focus, .tv .tab:focus, .tv .pick:focus, .tv a:focus, .tv summary:focus, .tv .x:focus, .tv .qimg:focus {
+  outline: 5px solid #fff; outline-offset: 5px; box-shadow: 0 0 0 12px #ff990066; }
+.tv .btn:focus { transform: scale(1.04); }
+.tv .opt:focus { transform: translateX(6px); }
+.tv .mission:focus-within { outline: 5px solid #fff; outline-offset: 4px; transform: scale(1.04); z-index: 1; }
+.tv input:focus { box-shadow: 0 0 0 4px #fff; }
+.tv .lc-logo:focus { outline-offset: 2px; }
+.tv .home .hero { grid-template-columns: auto 1fr; gap: 20px; }
+.tv .home .hero img { width: 110px; }
+.tv .home .hero h1 { font-size: 46px; }
+/* TV lobby: QR code and game code must fit on one 16:9 screen */
+.tv .lobby { grid-template-columns: 290px 1fr; gap: 20px; }
+.tv .qrbox { padding: 12px; } .tv .qrbox .qr { width: 230px; margin: 0 auto; }
+.tv .qrbox .code b { font-size: 44px; } .tv .qrbox .url { font-size: 12px; }
+.tv .mission-banner img { width: 120px; } .tv .mission-banner b { font-size: 26px; }
+.tv #app > main { padding-top: 26px; }

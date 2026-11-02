@@ -18,6 +18,20 @@ Keine Teams zur Hand? **„Allein üben“** spielt eine Mission allein auf eine
 
 Das Design ist von den LCARS-Computeranzeigen aus Star Trek inspiriert und für Handys optimiert; auf dem Handy lässt sich das Quiz auch „zum Startbildschirm hinzufügen“.
 
+## Android TV App 📺
+Der Fernseher wird zur Spielleitung und zum Bildschirm: Mission mit der Fernbedienung wählen, die Teams scannen den QR-Code vom Fernseher, gesteuert wird mit **Pfeiltasten + OK**.
+
+**Download:** [VulkanSpiritQuiz-TV.apk](https://github.com/Vulkan-Spirit-Quiz/vulkan-spirit-quiz.github.io/releases/download/tv/VulkanSpiritQuiz-TV.apk) (Seite: [Releases → Android TV App](https://github.com/Vulkan-Spirit-Quiz/vulkan-spirit-quiz.github.io/releases/tag/tv))
+
+Installation auf dem Fernseher (Google TV, Android TV, Fire TV):
+1. Im Play Store bzw. Amazon Appstore die kostenlose App **„Downloader“** (von AFTVnews) installieren.
+2. In den Einstellungen des Fernsehers „Apps aus unbekannten Quellen“ für **Downloader** erlauben
+   (Google TV: Einstellungen → System → Info → 7× auf „Android TV OS-Build“ tippen, dann Einstellungen → Apps → Sicherheit → Unbekannte Apps).
+3. In Downloader die Download-Adresse oben eingeben → herunterladen → **Installieren**.
+4. Die App „Vulkan Spirit Quiz“ erscheint auf dem Startbildschirm.
+
+Die App zeigt die Webseite im Vollbild, hält den Bildschirm wach und braucht Internet. Inhalte (Fragen, Design) kommen immer aktuell von der Webseite – die App muss dafür nicht neu installiert werden. Quellcode: `android/`, gebaut automatisch von GitHub Actions (`.github/workflows/android-tv.yml`).
+
 ## Was ist drin
 - **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (9 Bonusfragen) – 109 Fragen insgesamt.
 - Automatische Auflösung, sobald alle Teams geantwortet haben oder die Zeit um ist.

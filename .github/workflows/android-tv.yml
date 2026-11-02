@@ -1,0 +1,67 @@
+# Builds the Android TV app (android/) and publishes it as the "Android TV App" release.
+name: Android TV APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android-tv.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-tv
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      # Optional fixed signing key (repository secrets) so new versions install over old ones.
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          gradle --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/VulkanSpiritQuiz-TV.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VulkanSpiritQuiz-TV
+          path: VulkanSpiritQuiz-TV.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Vulkan Spirit Quiz für Android TV (Build ${{ github.run_number }}). Installation: siehe README → Android TV."
+          if gh release view tv --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload tv VulkanSpiritQuiz-TV.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit tv --notes "$NOTES" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create tv VulkanSpiritQuiz-TV.apk --title "Android TV App" --notes "$NOTES" --repo "$GITHUB_REPOSITORY"
+          fi
