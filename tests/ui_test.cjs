@@ -32,7 +32,7 @@ const clock = ms => fetch(B + '/__clock?add=' + ms);
     if (i === 1) { await p.click('[data-group-tab="voelker"]'); await p.click('[data-avatar="klingone"]'); }
     else if (i === 2) {
       await p.click('[data-group-tab="upload"]');
-      await p.setInputFiles('[data-upload]', '/home/claude/quiz/docs/logo.jpg');
+      await p.setInputFiles('[data-upload]', '/home/claude/quiz/docs/media/characters/kirk.jpeg');
       await p.waitForSelector('.upload .av img');
     } else await p.click('[data-avatar="picard"]');
     if (i === 0) await p.screenshot({ path: shots + '02_phone_join.png', fullPage: true });

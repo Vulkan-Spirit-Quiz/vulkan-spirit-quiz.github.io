@@ -22,8 +22,9 @@ export const THEME_COLORS = {
 
 const c = (id, name, image) => ({ id, name, group: 'crew', image: 'media/characters/' + image });
 const s = (id, name, emoji, tag, group, bg) => ({ id, name, emoji, tag, group, bg });
+const alien = (id, name, tag) => ({ id, name, tag, group: 'voelker', image: 'media/aliens/' + id + '.svg' });
 export const AVATAR_GROUPS = [
-  ['crew', 'Charaktere'], ['voelker', 'Völker'], ['uniform', 'Uniformen'], ['technik', 'Technik & Schiffe'], ['tiere', 'Tiere & Snacks']
+  ['crew', 'Charaktere'], ['voelker', 'Aliens'], ['uniform', 'Uniformen'], ['technik', 'Technik & Schiffe'], ['tiere', 'Tiere & Snacks']
 ];
 export const AVATARS = [
   c('spock', 'Spock', 'spock.jpeg'), c('kirk', 'Kirk', 'kirk.jpeg'), c('picard', 'Picard', 'picard.jpeg'),
@@ -31,15 +32,12 @@ export const AVATARS = [
   c('pike', 'Pike', 'pike.jpeg'), c('burnham', 'Burnham', 'burnham.jpeg'), c('ake', 'Ake', 'ake.jpeg'),
   c('shran', 'Shran', 'shran.jpeg'), c('khan', 'Khan', 'khan.jpeg'), c('boimler', 'Boimler', 'boimler.jpeg'),
   c('mariner', 'Mariner', 'mariner.jpeg'), c('dukat', 'Dukat', 'dukat.jpeg'),
-  s('vulkanier', 'Vulkanier', '🖖', 'Faszinierend.', 'voelker', '#2b4a7a'),
-  s('klingone', 'Klingone', '⚔️', 'Qapla’!', 'voelker', '#6b1f1f'),
-  s('ferengi', 'Ferengi', '💰', 'Gewinn ist Pflicht.', 'voelker', '#6b5a1f'),
-  s('andorianer', 'Andorianer', '🧊', 'Antennen ausgefahren!', 'voelker', '#1f4f6b'),
-  s('bajoraner', 'Bajoraner', '🙏', 'Die Propheten wissen es.', 'voelker', '#5a3a6b'),
-  s('trill', 'Trill', '🌀', 'Mehrere Leben, ein Team.', 'voelker', '#1f6b5a'),
-  s('romulaner', 'Romulaner', '🦅', 'Tarnung an!', 'voelker', '#1f5a2b'),
+  alien('vulkanier', 'Vulkanier', 'Faszinierend.'), alien('klingone', 'Klingone', 'Qapla’!'),
+  alien('romulaner', 'Romulaner', 'Tarnung an!'), alien('andorianer', 'Andorianer', 'Antennen ausgefahren!'),
+  alien('ferengi', 'Ferengi', 'Gewinn ist Pflicht.'), alien('borg', 'Borg', 'Widerstand zwecklos.'),
+  alien('cardassianer', 'Cardassianer', 'Ordnung muss sein.'), alien('bajoraner', 'Bajoraner', 'Die Propheten wissen es.'),
+  alien('trill', 'Trill', 'Mehrere Leben, ein Team.'), alien('gorn', 'Gorn', 'Zum Fressen gern.'),
   s('betazoid', 'Betazoid', '💜', 'Ich spüre eure Antwort.', 'voelker', '#4a2b6b'),
-  s('borg', 'Borg', '🟩', 'Widerstand zwecklos.', 'voelker', '#1a2a1a'),
   s('wechselbalg', 'Wechselbalg', '💧', 'Heute in neuer Form.', 'voelker', '#6b4a1f'),
   s('android', 'Android', '🤖', 'Positronisch brillant.', 'voelker', '#4a4a5a'),
   s('hologramm', 'Hologramm-Arzt', '🩺', 'Art des Notfalls?', 'voelker', '#1f5a6b'),

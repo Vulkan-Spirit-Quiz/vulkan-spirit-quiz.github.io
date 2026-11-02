@@ -1,4 +1,4 @@
-// Vulkan Spirit Teamquiz – transport. Three ways to reach the game:
+// Vulkan Spirit Quiz – transport. Three ways to reach the game:
 //  server: Netlify function at api/game (original setup)
 //  local:  this browser hosts the room (engine.mjs) – on GitHub Pages, and for solo games
 //  peer:   a team device talks to the host browser peer-to-peer (WebRTC via PeerJS)

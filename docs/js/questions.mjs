@@ -1,4 +1,4 @@
-// Vulkan Spirit Teamquiz – Fragenkatalog
+// Vulkan Spirit Quiz – Fragenkatalog
 // 10 Themen × 10 Fragen (eine pro Mission) + 5 Kobayashi-Maru-Fragen.
 // Jede Frage: q = Frage, o = Antworten (die RICHTIGE steht immer zuerst; die Reihenfolge
 // wird unten pro Frage fest gemischt), e = kurze Erklärung, img = optionales Bild.

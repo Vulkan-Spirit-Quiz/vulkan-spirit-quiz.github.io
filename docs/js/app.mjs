@@ -1,4 +1,4 @@
-// Vulkan Spirit Teamquiz – browser app (no build step, no dependencies)
+// Vulkan Spirit Quiz – browser app (no build step, no dependencies)
 import { MISSIONS, THEME_COLORS, AVATARS, AVATAR_GROUPS, DEFAULT_PRIZE, QUESTION_SECONDS } from './shared.mjs';
 import { qrSvg } from './qr.mjs';
 import { detectMode, serverTransport, localTransport, peerTransport, claimHost } from './net.mjs';
@@ -130,12 +130,12 @@ function diploma(team) {
   if (!w) { toast('Bitte Pop-ups für das Diplom erlauben.'); return; }
   const date = new Date().toLocaleDateString('de-AT', { day: 'numeric', month: 'long', year: 'numeric' });
   w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Siegerdiplom – ${esc(team.name)}</title>
-<style>@font-face{font-family:Michroma;src:url(${BASE}fonts/michroma-regular.ttf)}@page{size:A4 landscape;margin:0}
+<style>@font-face{font-family:Antonio;src:url(${BASE}fonts/antonio.woff2)}@page{size:A4 landscape;margin:0}
 body{margin:0;font-family:Georgia,serif;background:#fff;color:#1b1b2b}.d{box-sizing:border-box;width:297mm;height:210mm;padding:18mm;border:6mm solid #c9a227;outline:2mm solid #1b2a4a;outline-offset:-10mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-h1{font-family:Michroma,Arial,sans-serif;letter-spacing:.12em;font-size:30pt;margin:6mm 0 2mm;color:#1b2a4a}.t{font-size:34pt;font-weight:bold;margin:6mm 0;color:#8a5a00}.s{font-size:15pt;line-height:1.6}img{height:30mm;border-radius:50%}
-.f{margin-top:10mm;font-size:11pt;color:#555}</style></head><body><div class="d"><img src="${BASE}logo.jpg" alt="">
+h1{font-family:Antonio,'Arial Narrow',sans-serif;letter-spacing:.14em;font-size:42pt;margin:4mm 0 2mm;color:#1b2a4a}.t{font-size:34pt;font-weight:bold;margin:6mm 0;color:#8a5a00}.s{font-size:15pt;line-height:1.6}img{height:40mm}
+.f{margin-top:10mm;font-size:11pt;color:#555}</style></head><body><div class="d"><img src="${BASE}logo.png" alt="">
 <h1>SIEGERDIPLOM</h1><div class="s">Das Team</div><div class="t">${esc(team.name)}</div>
-<div class="s">gewinnt die Mission <b>${esc(d.mission)}</b> des Vulkan Spirit Teamquiz<br>mit <b>${fmt(team.score)} Punkten</b>.<br>Preis: <b>${esc(d.prize)}</b></div>
+<div class="s">gewinnt die Mission <b>${esc(d.mission)}</b> des Vulkan Spirit Quiz<br>mit <b>${fmt(team.score)} Punkten</b>.<br>Preis: <b>${esc(d.prize)}</b></div>
 <div class="f">${date} · Live long and quiz. 🖖</div></div><script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`);
   w.document.close();
 }
@@ -160,9 +160,24 @@ const GOOD = ['Spock hebt eine Augenbraue. Mehr Lob geht kaum.', 'Euer Wissen ha
 const BAD = ['Picard braucht kurz einen Moment. Dann geht’s weiter.', 'Die Antwort ist im Transporterpuffer verschwunden.', 'Der Universalübersetzer war heute wohl im Urlaub.', 'Keine Sorge: Auch die Enterprise verfliegt sich mal.', 'Das war kein Fehler. Das war eine alternative Zeitlinie.'];
 
 // ---------- view parts ----------
+// LCARS frame: header with elbow + logo, and a side column with live status blocks (hidden on phones)
 function header(extra = '') {
-  return `<header class="top"><a class="brand" href="./"><img src="logo.jpg" alt=""><span>VULKAN SPIRIT<small>Teamquiz</small></span></a>${extra}
-  ${ROOM && S.data && !S.online ? '<span class="pill warn">Verbinde …</span>' : ''}</header>`;
+  const offline = ROOM && S.data && !S.online ? '<span class="pill warn">Verbinde …</span>' : '';
+  return `<header class="lc-head"><div class="lc-elbow"><a class="lc-logo" href="./" aria-label="Startseite"><img src="logo.png" alt="Vulkan Spirit"></a></div>
+   <div class="lc-headbody"><div class="lc-titlerow">${extra}${offline}<a class="lc-title" href="./">Vulkan Spirit Quiz</a></div>
+   <div class="lc-bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div></header>${side()}`;
+}
+function stardate() {
+  const n = new Date(), start = new Date(n.getFullYear(), 0, 1);
+  return ((n.getFullYear() - 1946) * 1000 + (n - start) / 86400000 * 2.74).toFixed(1);
+}
+function side() {
+  const d = S.data;
+  const phase = !d ? 'Bereit' : d.phase === 'lobby' ? 'Wartet auf Start' : d.phase === 'question' ? `Frage ${d.q + 1}/${d.total}` : d.phase === 'reveal' ? 'Auflösung' : 'Endstand';
+  const blocks = d
+    ? [['c2', 'Code ' + d.code], ['c4', d.mission], ['c3', `${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'}`], ['c5', phase]]
+    : [['c2', 'LCARS 47'], ['c4', '105 Fragen'], ['c3', '11 Missionen'], ['c5', 'Sternzeit ' + stardate()]];
+  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t]) => `<div class="lc-block ${c}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow">01-${ROOM ? '4711' : '1701'}</div></aside>`;
 }
 function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
@@ -210,7 +225,9 @@ function countdownBlock(d) {
 function viewHome() {
   const last = store.get('warp-last-host'), H = S.home;
   return `${header()}<main class="home">
-  <section class="hero"><h1>LIVE LONG<br>AND QUIZ</h1><p>105 Star-Trek-Fragen in elf Missionen. Teams treten per QR-Code bei – ohne Anmeldung.</p></section>
+  <section class="hero"><img src="logo.png" alt="Vulkan Spirit Wappen" width="230" height="207"><div><h1><span>Live long and quiz</span>Vulkan Spirit Quiz</h1>
+    <p>Das Star-Trek-Teamquiz für Vereinsabende: Teams treten per QR-Code mit dem Handy bei – ohne Anmeldung, ohne App.</p>
+    <div class="stats"><span>105 Fragen</span><span>11 Missionen</span><span>bis 40 Teams</span></div></div></section>
   <section class="card join-card"><h2>Team beitreten</h2>
     <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="SPIELCODE" value="${esc(H.code)}" aria-label="Sechsstelliger Spielcode">
     <button class="btn primary">Mitspielen →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>
@@ -225,7 +242,7 @@ function viewHome() {
   ${footer()}</main>`;
 }
 function footer() {
-  return `<footer><a href="fragenquellen.html">Fragen &amp; Quellen</a> · <a href="bildquellen.html">Bild- &amp; Schriftquellen</a><br>
+  return `<footer><div class="lc-foot" aria-hidden="true"><i></i><i></i><i></i></div><a href="fragenquellen.html">Fragen &amp; Quellen</a> · <a href="bildquellen.html">Bild- &amp; Schriftquellen</a><br>
   Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS.</footer>`;
 }
 
@@ -290,7 +307,7 @@ function viewScreen() {
       <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
       ${reveal ? `<div class="explain"><small>DAS STECKT DAHINTER</small><p>${esc(Q.explanation)}</p></div><section class="card"><h3>LIVE-RANGLISTE</h3>${scoreList(d, 8, true)}</section>` : ''}</section>`;
   } else body = viewFinished(d, 'screen');
-  return `<main class="screen">${body}</main>`;
+  return `${header(`<span class="pill">Beamer · ${esc(d.code)}</span>`)}<main class="screen">${body}</main>`;
 }
 function viewFinished(d, who) {
   const list = ranked(d.teams), win = winners(d.teams), me = d.me && list.find(t => t.id === d.me.id);

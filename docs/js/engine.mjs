@@ -1,4 +1,4 @@
-// Vulkan Spirit Teamquiz – game engine for the browser of the Spielleitung (GitHub Pages / no server).
+// Vulkan Spirit Quiz – game engine for the browser of the Spielleitung (GitHub Pages / no server).
 // Same rules and answers as lib/game.mjs, but the room lives in this browser (localStorage) and teams
 // talk to it peer-to-peer. request() mirrors the /api/game endpoint: { status, body }.
 import { PACKS, MISSIONS, QUESTION_TIME_MS, GET_READY_MS, pointsFor } from './questions.mjs';

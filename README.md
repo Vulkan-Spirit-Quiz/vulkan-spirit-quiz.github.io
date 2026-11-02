@@ -1,4 +1,4 @@
-# Vulkan Spirit Teamquiz 🖖
+# Vulkan Spirit Quiz 🖖
 
 Star-Trek-Teamquiz für Vereinsabende, Partys und Fan-Treffen – **direkt im Browser, ohne Anmeldung, ohne Server.**
 Die Spielleitung startet ein Quiz, Teams treten per QR-Code mit dem Handy bei, ein Beamer zeigt Fragen und Rangliste.
@@ -15,6 +15,8 @@ Die Spielleitung startet ein Quiz, Teams treten per QR-Code mit dem Handy bei, e
 5. Am Ende: Siegerteam, Siegerdiplom zum Drucken, Ergebnis als CSV, nächste Mission mit denselben Teams.
 
 Keine Teams zur Hand? **„Allein üben“** spielt eine Mission allein auf einem Gerät.
+
+Das Design ist von den LCARS-Computeranzeigen aus Star Trek inspiriert und für Handys optimiert; auf dem Handy lässt sich das Quiz auch „zum Startbildschirm hinzufügen“.
 
 ## Was ist drin
 - **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (5 Bonusfragen) – 105 Fragen insgesamt.
@@ -54,7 +56,7 @@ docs/                       Webseite für GitHub Pages (kein Build nötig)
   js/engine.mjs             Spiellogik im Browser der Spielleitung
   js/net.mjs                Verbindung: Server, lokal oder Peer-to-Peer
   vendor/peerjs.min.js      PeerJS 1.5.4 (MIT)
-  media/, fonts/, logo.jpg  Bilder und Schrift
+  media/, fonts/, logo.png  Bilder (inkl. media/aliens/*.svg), Schrift Antonio, Logo
 lib/game.mjs                Spiellogik für die Netlify-Server-Variante
 netlify/                    Server-Funktion und Datenbankschema
 scripts/check.mjs           prüft den Fragenkatalog
@@ -64,4 +66,4 @@ scripts/check.mjs           prüft den Fragenkatalog
 In `docs/js/questions.mjs` steht bei jeder Frage die **richtige Antwort zuerst**; die Reihenfolge wird automatisch fest gemischt. `node scripts/check.mjs` prüft danach, ob alles stimmt.
 
 ## Rechtliches
-Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS. Bild- und Schriftquellen: [`docs/bildquellen.html`](docs/bildquellen.html), Fragenquellen: [`docs/fragenquellen.html`](docs/fragenquellen.html). Schrift Michroma unter SIL Open Font License, PeerJS unter MIT-Lizenz.
+Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS. Die Alien-Porträts sind eigene Illustrationen. Bild- und Schriftquellen: [`docs/bildquellen.html`](docs/bildquellen.html), Fragenquellen: [`docs/fragenquellen.html`](docs/fragenquellen.html). Schrift Antonio unter SIL Open Font License, PeerJS unter MIT-Lizenz.
