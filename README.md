@@ -3,7 +3,7 @@
 Star-Trek-Teamquiz für Vereinsabende, Partys und Fan-Treffen – **direkt im Browser, ohne Anmeldung, ohne Server.**
 Die Spielleitung startet ein Quiz, Teams treten per QR-Code mit dem Handy bei, ein Beamer zeigt Fragen und Rangliste.
 
-**▶ Jetzt spielen: https://mmalayeri-tech.github.io/vulkan-spirit-teamquiz/**
+**▶ Jetzt spielen: https://vulkan-spirit-quiz.github.io/**
 
 *English: A German-language Star Trek team quiz. One device hosts, teams join by scanning a QR code, a projector shows questions and scores. Runs entirely on GitHub Pages – the host's browser is the game server and phones connect to it peer-to-peer (WebRTC). There is also a solo practice mode.*
 
