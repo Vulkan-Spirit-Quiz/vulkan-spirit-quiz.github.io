@@ -167,23 +167,19 @@ function header(extra = '') {
    <div class="lc-headbody"><div class="lc-titlerow">${extra}${offline}<a class="lc-title" href="./">Vulkan Spirit Quiz</a></div>
    <div class="lc-bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div></header>${side()}`;
 }
-function stardate() {
-  const n = new Date(), start = new Date(n.getFullYear(), 0, 1);
-  return ((n.getFullYear() - 1946) * 1000 + (n - start) / 86400000 * 2.74).toFixed(1);
-}
-function side() {
+function side() { // in a game: live status; on the start page: plain colour blocks
   const d = S.data;
-  const phase = !d ? 'Bereit' : d.phase === 'lobby' ? 'Wartet auf Start' : d.phase === 'question' ? `Frage ${d.q + 1}/${d.total}` : d.phase === 'reveal' ? 'Auflösung' : 'Endstand';
+  const phase = !d ? '' : d.phase === 'lobby' ? 'Wartet auf Start' : d.phase === 'question' ? `Frage ${d.q + 1}/${d.total}` : d.phase === 'reveal' ? 'Auflösung' : 'Endstand';
   const blocks = d
     ? [['c2', 'Code ' + d.code], ['c4', d.mission], ['c3', `${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'}`], ['c5', phase]]
-    : [['c2', 'LCARS 47'], ['c4', '105 Fragen'], ['c3', '11 Missionen'], ['c5', 'Sternzeit ' + stardate()]];
-  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t]) => `<div class="lc-block ${c}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow">01-${ROOM ? '4711' : '1701'}</div></aside>`;
+    : [['c2', ''], ['c4', ''], ['c3', ''], ['c5', '']];
+  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t]) => `<div class="lc-block ${c}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow"></div></aside>`;
 }
 function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
   return `<label class="mission ${selected ? 'sel' : ''}"><input type="radio" name="${name}" value="${i}" ${selected ? 'checked' : ''}>
   <img src="${m.image}" alt="" loading="lazy"><span class="mname">${esc(m.name)}</span>
-  <span class="minfo">${m.finale ? '5 Bonusfragen · für Star-Trek-Fans' : '9 faire Fragen + 1 Knackfrage · 2,5×'}</span></label>`;
+  <span class="minfo">${m.finale ? '9 Bonusfragen · für echte Fans' : '9 faire Fragen + 1 Knackfrage · 2,5×'}</span></label>`;
 }
 function timerHtml(d) {
   return `<div class="timer" data-timer><span data-sec>${QUESTION_SECONDS}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
@@ -226,8 +222,7 @@ function viewHome() {
   const last = store.get('warp-last-host'), H = S.home;
   return `${header()}<main class="home">
   <section class="hero"><img src="logo.png" alt="Vulkan Spirit Wappen" width="230" height="207"><div><h1><span>Live long and quiz</span>Vulkan Spirit Quiz</h1>
-    <p>Das Star-Trek-Teamquiz für Vereinsabende: Teams treten per QR-Code mit dem Handy bei – ohne Anmeldung, ohne App.</p>
-    <div class="stats"><span>105 Fragen</span><span>11 Missionen</span><span>bis 40 Teams</span></div></div></section>
+    <p>Das Star-Trek-Quiz für Conventions und Fan-Treffen: Tretet als Team gegen andere Fans an, sammelt Punkte und gewinnt Preise! Mitmachen per QR-Code mit dem Handy – ohne Anmeldung, ohne App.</p></div></section>
   <section class="card join-card"><h2>Team beitreten</h2>
     <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="SPIELCODE" value="${esc(H.code)}" aria-label="Sechsstelliger Spielcode">
     <button class="btn primary">Mitspielen →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>

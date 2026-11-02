@@ -140,6 +140,10 @@ const FINALE = [
   { q: 'Wer absolviert zu Beginn von „Star Trek II“ den Kobayashi-Maru-Test?', o: ['Saavik', 'Valeris', 'T’Pol', 'Uhura'], e: 'Lieutenant Saavik scheitert – wie vorgesehen.' },
   { q: 'Wer programmiert im Film „Star Trek“ (2009) den Kobayashi-Maru-Test?', o: ['Spock', 'Pike', 'McCoy', 'Scotty'], e: 'Spock hat den Test geschrieben – und ist von Kirks Trick wenig begeistert.' },
   { q: 'Woran glaubt Kirk laut eigener Aussage nicht?', o: ['An Situationen ohne Ausweg', 'An Zufälle', 'An Regeln', 'An Logik'], e: '„Ich glaube nicht an Situationen ohne Ausweg.“' },
+  { q: 'Wie heißt die Ehefrau von Khan Noonien Singh?', o: ['Marla McGivers', 'Carla McGuiver', 'Jacqueline O’Neil', 'Janice Rand'], e: 'Lieutenant Marla McGivers verliebt sich in „Der schlafende Tiger“ in Khan und folgt ihm ins Exil nach Ceti Alpha V.' },
+  { q: 'Wie heißt der Bruder von James T. Kirk?', o: ['George Samuel Kirk', 'Thomas Kirk', 'Flavius Kirk', 'Otto Kirk'], e: 'Kirks älterer Bruder George Samuel „Sam“ Kirk ist Wissenschaftler – er stirbt auf dem Planeten Deneva.' },
+  { q: 'Was versteht man unter dem „vulkanischen Hallo“ aus Star Trek: Discovery?', o: ['Einen präventiven Erstschlag gegen einen möglichen Gegner', 'Eine Einladung zu einer vulkanischen Gedankenverschmelzung', 'Eine traditionelle Einladung zum Tee', 'Einen besonderen Freundschaftsgruß für nahestehende Personen'], e: 'Bei ihrem ersten Kontakt eröffneten die Vulkanier sofort das Feuer auf die Klingonen – seitdem verschaffte ihnen das Respekt. Burnham rät deshalb zum „vulkanischen Hallo“.' },
+  { q: 'Auf welchem Raumschiff diente Michael Burnham ursprünglich als Erste Offizierin?', o: ['USS Shenzhou', 'USS Discovery', 'USS Europa', 'USS Enterprise'], e: 'Bevor sie auf die Discovery kam, war Burnham Erste Offizierin unter Captain Philippa Georgiou auf der USS Shenzhou.' },
   { q: 'Wie viele Erwerbsregeln der Ferengi gibt es?', o: ['285', '100', '62', '1.000'], e: 'Es gibt 285 Erwerbsregeln.' }
 ];
 

@@ -1,6 +1,6 @@
 # Vulkan Spirit Quiz 🖖
 
-Star-Trek-Teamquiz für Vereinsabende, Partys und Fan-Treffen – **direkt im Browser, ohne Anmeldung, ohne Server.**
+Das Star-Trek-Quiz für Conventions und Fan-Treffen: im Team gegen andere Fans antreten und Preise gewinnen – **direkt im Browser, ohne Anmeldung, ohne Server.**
 Die Spielleitung startet ein Quiz, Teams treten per QR-Code mit dem Handy bei, ein Beamer zeigt Fragen und Rangliste.
 
 **▶ Jetzt spielen: https://vulkan-spirit-quiz.github.io/**
@@ -19,7 +19,7 @@ Keine Teams zur Hand? **„Allein üben“** spielt eine Mission allein auf eine
 Das Design ist von den LCARS-Computeranzeigen aus Star Trek inspiriert und für Handys optimiert; auf dem Handy lässt sich das Quiz auch „zum Startbildschirm hinzufügen“.
 
 ## Was ist drin
-- **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (5 Bonusfragen) – 105 Fragen insgesamt.
+- **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (9 Bonusfragen) – 109 Fragen insgesamt.
 - Automatische Auflösung, sobald alle Teams geantwortet haben oder die Zeit um ist.
 - Teambilder: 14 Charakterfotos, Völker, Uniformen, Technik, Tiere & Snacks oder ein eigenes Foto.
 - Spielleitung: QR-Code speichern, Link kopieren, Beamer-Ansicht, Teams entfernen, Mission/Preis vor dem Start ändern, Quiz beenden.
