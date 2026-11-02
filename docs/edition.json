@@ -1,0 +1,15 @@
+{
+  "edition": "Vulkan Spirit Quiz",
+  "version": 3,
+  "packs": 11,
+  "questionsPerPack": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 5],
+  "questionsTotal": 105,
+  "mix": "one question from each of ten themes in every pack",
+  "finale": "Kobayashi Maru",
+  "difficulty": "questions 1–9 are accessible and mixed; only question 10 in each 10-question mission is hard",
+  "multiplier": "question 10 scores 2.5× (maximum 2500 points)",
+  "timer": "25 seconds per question, 3 seconds get-ready countdown, automatic reveal when time is up or every team has answered",
+  "audio": "none",
+  "hosting": "GitHub Pages: game runs in the host browser, teams connect peer-to-peer (PeerJS). Netlify Database variant still supported.",
+  "solo": "single-player practice mode"
+}

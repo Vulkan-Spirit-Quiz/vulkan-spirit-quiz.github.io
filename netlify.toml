@@ -1,0 +1,37 @@
+# Vulkan Spirit Teamquiz – Netlify configuration
+# The site has no frontend build step: /docs is served as-is.
+# The build command only checks the question bank (fails the deploy if something is wrong).
+[build]
+  command = "node scripts/check.mjs"
+  publish = "docs"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/game"
+  to = "/.netlify/functions/game"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
