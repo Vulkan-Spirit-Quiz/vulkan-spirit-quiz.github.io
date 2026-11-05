@@ -186,15 +186,50 @@ function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
   return `<label class="mission ${selected ? 'sel' : ''}"><input type="radio" name="${name}" value="${i}" ${selected ? 'checked' : ''}>
   <img src="${m.image}" alt="" loading="lazy"><span class="mname">${esc(m.name)}</span>
-  <span class="minfo">${m.finale ? '9 Bonusfragen · für echte Fans' : '9 faire Fragen + 1 Knackfrage · 2,5×'}</span></label>`;
+  <span class="minfo">${m.finale ? '5 Bonusfragen · mit Musikfrage' : '9 faire Fragen + 1 Knackfrage · 2,5×'}</span></label>`;
 }
 function timerHtml(d) {
-  return `<div class="timer" data-timer><span data-sec>${QUESTION_SECONDS}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
+  return `<div class="timer" data-timer><span data-sec>${Math.round((d.deadline - d.started) / 1000)}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
 }
 function questionHead(d) {
   const Q = d.question, col = THEME_COLORS[Q.theme] || ['#9fd', '#a8f'];
   return `<div class="qhead" style="--c1:${col[0]};--c2:${col[1]}"><span class="theme">${esc(Q.theme)}</span>
-   <span class="qnum">Frage ${d.q + 1} von ${d.total}</span>${Q.hard ? '<span class="hard">KNACKFRAGE · 2,5× PUNKTE</span>' : ''}</div>`;
+   <span class="qnum">Frage ${d.q + 1} von ${d.total}</span>${Q.hard ? '<span class="hard">KNACKFRAGE · 2,5× PUNKTE</span>' : ''}
+   ${Q.audio ? `<span class="hard music-tag">♫ MUSIKFRAGE · ${Q.seconds || QUESTION_SECONDS} SEKUNDEN</span>` : ''}</div>${musicControls(d)}`;
+}
+
+// ---------- music question ----------
+// The theme plays where the quiz is shown (host, projector screen, solo) – never on the team phones.
+const music = { el: null, src: '', blocked: false, muted: false };
+const musicHere = d => !!d?.question?.audio && (d.phase === 'question' || d.phase === 'reveal') && (role() === 'host' || role() === 'screen' || d.solo);
+function syncMusic() {
+  const d = S.data;
+  if (!musicHere(d)) {
+    if (music.el) { music.el.pause(); music.el = null; music.src = ''; music.blocked = false; render(true); }
+    return;
+  }
+  const src = d.question.audio;
+  if (music.src !== src) {
+    music.el = new Audio(src); music.src = src; music.el.preload = 'auto'; music.muted = false;
+    music.el.onplay = music.el.onpause = music.el.onended = () => render(true);
+  }
+  if (now() >= d.started && music.el.paused && !music.el.ended && !music.muted && !music.blocked) {
+    music.el.play().catch(() => { music.blocked = true; render(true); }); // browser wants a click first
+  }
+}
+function musicControls(d) {
+  if (!musicHere(d)) return '';
+  const playing = music.el && !music.el.paused;
+  const label = playing ? '⏸ Musik pausieren' : music.el?.ended ? '↺ Musik nochmal' : '▶ Musik abspielen';
+  return `<div class="row music-bar"><button class="btn${playing ? '' : ' primary'}" data-act="music">${label}</button>
+    ${music.blocked && !playing ? '<span class="muted small">Der Browser hat die Musik angehalten – bitte einmal tippen.</span>' : ''}</div>`;
+}
+function toggleMusic() {
+  if (!music.el) return;
+  if (!music.el.paused) { music.muted = true; music.el.pause(); return; }
+  music.muted = false; music.blocked = false;
+  if (music.el.ended) music.el.currentTime = 0;
+  music.el.play().catch(() => { music.blocked = true; render(true); });
 }
 function progress(d) {
   const p = Math.max(0, d.q + (d.phase === 'reveal' ? 1 : 0)) / d.total * 100;
@@ -433,11 +468,12 @@ function render(force = false) {
 // timer + get-ready countdown without re-rendering the page
 function tick() {
   const d = S.data; if (!d) return;
-  const left = Math.max(0, d.deadline - now()), sec = Math.ceil(left / 1000);
-  for (const el of $app.querySelectorAll('[data-sec]')) el.textContent = now() < d.started ? QUESTION_SECONDS : sec;
-  for (const el of $app.querySelectorAll('[data-ring]')) el.style.strokeDashoffset = String(106.8 * (1 - Math.min(1, left / (QUESTION_SECONDS * 1000))));
+  const total = Math.max(1000, d.deadline - d.started), left = Math.max(0, d.deadline - now()), sec = Math.ceil(left / 1000);
+  for (const el of $app.querySelectorAll('[data-sec]')) el.textContent = now() < d.started ? Math.round(total / 1000) : sec;
+  for (const el of $app.querySelectorAll('[data-ring]')) el.style.strokeDashoffset = String(106.8 * (1 - Math.min(1, left / total)));
   for (const el of $app.querySelectorAll('[data-timer]')) el.classList.toggle('low', sec <= 5 && now() >= d.started);
   for (const el of $app.querySelectorAll('[data-pre]')) el.textContent = Math.max(1, Math.ceil((d.started - now()) / 1000));
+  syncMusic();
 }
 
 // ---------- events ----------
@@ -498,6 +534,7 @@ $app.addEventListener('click', async e => {
       if (r) { S.lobbyPack = null; S.lobbyPrize = null; S.settingsOpen = false; toast('Gespeichert.'); render(true); } return;
     }
     case 'restart': { const pack = S.restartPack ?? Math.min(S.data.pack + 1, MISSIONS.length - 1); S.restartPack = null; act('restart', { pack }); return; }
+    case 'music': toggleMusic(); return;
     case 'saveqr': saveQr(); return;
     case 'csv': csv(); return;
   }

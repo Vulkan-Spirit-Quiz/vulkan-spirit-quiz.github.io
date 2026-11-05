@@ -3,7 +3,7 @@ import { PACKS, MISSIONS, THEMES, pointsFor } from '../lib/questions.mjs';
 const errors = [];
 if (PACKS.length !== 11 || MISSIONS.length !== 11) errors.push('Es müssen 11 Missionen sein.');
 PACKS.forEach((pack, p) => {
-  const expected = MISSIONS[p].finale ? 9 : 10;
+  const expected = MISSIONS[p].finale ? 5 : 10;
   if (pack.length !== expected) errors.push(`Mission ${p}: ${pack.length} statt ${expected} Fragen`);
   if (!MISSIONS[p].finale) {
     const themes = new Set(pack.map(q => q.theme));

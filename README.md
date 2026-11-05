@@ -33,7 +33,7 @@ Installation auf dem Fernseher (Google TV, Android TV, Fire TV):
 Die App zeigt die Webseite im Vollbild, hält den Bildschirm wach und braucht Internet. Inhalte (Fragen, Design) kommen immer aktuell von der Webseite – die App muss dafür nicht neu installiert werden. Quellcode: `android/`, gebaut automatisch von GitHub Actions (`.github/workflows/android-tv.yml`).
 
 ## Was ist drin
-- **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (9 Bonusfragen) – 109 Fragen insgesamt.
+- **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (5 Bonusfragen, die letzte ist eine Musikfrage mit 45 Sekunden Zeit) – 105 Fragen insgesamt.
 - Automatische Auflösung, sobald alle Teams geantwortet haben oder die Zeit um ist.
 - Teambilder: 14 Charakterfotos, Völker, Uniformen, Technik, Tiere & Snacks oder ein eigenes Foto.
 - Spielleitung: QR-Code speichern, Link kopieren, Beamer-Ansicht, Teams entfernen, Mission/Preis vor dem Start ändern, Quiz beenden.

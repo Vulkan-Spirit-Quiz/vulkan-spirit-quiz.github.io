@@ -265,3 +265,6 @@ form[data-form] .btn { flex: none; }
 .tv .qrbox .code b { font-size: 44px; } .tv .qrbox .url { font-size: 12px; }
 .tv .mission-banner img { width: 120px; } .tv .mission-banner b { font-size: 26px; }
 .tv #app > main { padding-top: 26px; }
+/* music question */
+.music-tag { background: var(--violet); }
+.music-bar { margin: -2px 0 12px; }

@@ -1,7 +1,7 @@
 // Vulkan Spirit Quiz – game engine for the browser of the Spielleitung (GitHub Pages / no server).
 // Same rules and answers as lib/game.mjs, but the room lives in this browser (localStorage) and teams
 // talk to it peer-to-peer. request() mirrors the /api/game endpoint: { status, body }.
-import { PACKS, MISSIONS, QUESTION_TIME_MS, GET_READY_MS, pointsFor } from './questions.mjs';
+import { PACKS, MISSIONS, GET_READY_MS, pointsFor, timeFor } from './questions.mjs';
 import { AVATAR_IDS, isUploadAvatar, DEFAULT_PRIZE } from './shared.mjs';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -67,7 +67,7 @@ export class Engine {
   autoReveal(now, answered) {
     const R = this.room;
     if (R.phase !== 'question') return;
-    if (now >= R.started + QUESTION_TIME_MS + REVEAL_GRACE_MS || (R.teams.length > 0 && answered >= R.teams.length && now >= R.started)) {
+    if (now >= R.started + timeFor(R.pack, R.q) + REVEAL_GRACE_MS || (R.teams.length > 0 && answered >= R.teams.length && now >= R.started)) {
       R.phase = 'reveal'; this.save();
     }
   }
@@ -83,7 +83,7 @@ export class Engine {
     const out = {
       code: R.code, phase: R.phase, q: R.q, total: questions.length, pack: R.pack,
       mission: MISSIONS[R.pack].name, prize: R.prize || DEFAULT_PRIZE, solo: !!R.solo,
-      started: R.started, deadline: R.started + QUESTION_TIME_MS, serverNow: now,
+      started: R.started, deadline: R.started + timeFor(R.pack, R.q), serverNow: now,
       isHost: host, answeredCount: answered,
       teams: teams.map(({ created, ...t }) => t),
       me: null, answer: null, question: null, stats: null
@@ -96,7 +96,7 @@ export class Engine {
       const Q = questions[R.q];
       const visible = R.phase === 'reveal' || host || now >= R.started - 250;
       out.question = { number: R.q + 1, theme: Q.theme, hard: Q.hard, multiplier: Q.hard ? 2.5 : 1 };
-      if (visible) Object.assign(out.question, { text: Q.text, options: Q.options, image: Q.image });
+      if (visible) Object.assign(out.question, { text: Q.text, options: Q.options, image: Q.image, audio: Q.audio || null, seconds: Q.seconds });
       if (R.phase === 'reveal') {
         Object.assign(out.question, { correct: Q.correct, explanation: Q.explanation });
         out.stats = [0, 0, 0, 0]; for (const a of R.answers) if (a.q === R.q) out.stats[a.choice]++;
@@ -131,9 +131,9 @@ export class Engine {
     const choice = Number(body.choice);
     if (!Number.isInteger(choice) || choice < 0 || choice > 3) fail(400, 'Ungültige Antwort.');
     if (now < R.started) fail(409, 'Noch einen Moment – die Frage startet gleich.');
-    if (now > R.started + QUESTION_TIME_MS + ANSWER_GRACE_MS) fail(409, 'Die Zeit ist abgelaufen.');
+    if (now > R.started + timeFor(R.pack, R.q) + ANSWER_GRACE_MS) fail(409, 'Die Zeit ist abgelaufen.');
     if (R.answers.some(a => a.team === team.id && a.q === R.q)) return { ok: true, saved: false };
-    const elapsed = Math.min(QUESTION_TIME_MS - 1, Math.max(0, now - R.started));
+    const elapsed = Math.min(timeFor(R.pack, R.q) - 1, Math.max(0, now - R.started));
     const points = choice === PACKS[R.pack][R.q].correct ? pointsFor(R.pack, R.q, elapsed) : 0;
     R.answers.push({ team: team.id, q: R.q, choice, points, elapsed });
     this.save();

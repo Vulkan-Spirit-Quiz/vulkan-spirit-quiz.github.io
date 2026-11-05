@@ -4,7 +4,7 @@
 // wird unten pro Frage fest gemischt), e = kurze Erklärung, img = optionales Bild.
 // Die Frage mit Index t im Thema t ist die schwierige Schlussfrage (Frage 10) von Mission t.
 
-import { MISSIONS } from './shared.mjs';
+import { MISSIONS, QUESTION_SECONDS } from './shared.mjs';
 export { MISSIONS };
 
 export const THEMES = [
@@ -136,23 +136,23 @@ const BANK = {
 };
 
 const FINALE = [
-  { q: 'Wie besteht Kirk als Kadett den Kobayashi-Maru-Test?', o: ['Er programmiert die Simulation um.', 'Er rettet das Schiff mit Warp 10.', 'Er ergibt sich den Klingonen.', 'Er lässt Spock kommandieren.'], e: 'Kirk ändert heimlich die Bedingungen – er glaubt nicht an Situationen ohne Ausweg.' },
-  { q: 'Wer absolviert zu Beginn von „Star Trek II“ den Kobayashi-Maru-Test?', o: ['Saavik', 'Valeris', 'T’Pol', 'Uhura'], e: 'Lieutenant Saavik scheitert – wie vorgesehen.' },
-  { q: 'Wer programmiert im Film „Star Trek“ (2009) den Kobayashi-Maru-Test?', o: ['Spock', 'Pike', 'McCoy', 'Scotty'], e: 'Spock hat den Test geschrieben – und ist von Kirks Trick wenig begeistert.' },
-  { q: 'Woran glaubt Kirk laut eigener Aussage nicht?', o: ['An Situationen ohne Ausweg', 'An Zufälle', 'An Regeln', 'An Logik'], e: '„Ich glaube nicht an Situationen ohne Ausweg.“' },
   { q: 'Wie heißt die Ehefrau von Khan Noonien Singh?', o: ['Marla McGivers', 'Carla McGuiver', 'Jacqueline O’Neil', 'Janice Rand'], e: 'Lieutenant Marla McGivers verliebt sich in „Der schlafende Tiger“ in Khan und folgt ihm ins Exil nach Ceti Alpha V.' },
   { q: 'Wie heißt der Bruder von James T. Kirk?', o: ['George Samuel Kirk', 'Thomas Kirk', 'Flavius Kirk', 'Otto Kirk'], e: 'Kirks älterer Bruder George Samuel „Sam“ Kirk ist Wissenschaftler – er stirbt auf dem Planeten Deneva.' },
   { q: 'Was versteht man unter dem „vulkanischen Hallo“ aus Star Trek: Discovery?', o: ['Einen präventiven Erstschlag gegen einen möglichen Gegner', 'Eine Einladung zu einer vulkanischen Gedankenverschmelzung', 'Eine traditionelle Einladung zum Tee', 'Einen besonderen Freundschaftsgruß für nahestehende Personen'], e: 'Bei ihrem ersten Kontakt eröffneten die Vulkanier sofort das Feuer auf die Klingonen – seitdem verschaffte ihnen das Respekt. Burnham rät deshalb zum „vulkanischen Hallo“.' },
   { q: 'Auf welchem Raumschiff diente Michael Burnham ursprünglich als Erste Offizierin?', o: ['USS Shenzhou', 'USS Discovery', 'USS Europa', 'USS Enterprise'], e: 'Bevor sie auf die Discovery kam, war Burnham Erste Offizierin unter Captain Philippa Georgiou auf der USS Shenzhou.' },
-  { q: 'Wie viele Erwerbsregeln der Ferengi gibt es?', o: ['285', '100', '62', '1.000'], e: 'Es gibt 285 Erwerbsregeln.' }
+  // Musikfrage: Antworten in fester Reihenfolge (keep + c = Index der richtigen), Musik auf Beamer/TV, 45 Sekunden Zeit.
+  { q: 'Hört genau hin: Aus welcher Serie stammt diese Titelmusik?', keep: true, c: 1, o: ['Enterprise', 'Discovery', 'Starfleet Academy', 'Strange New Worlds'],
+    e: 'Das ist die Titelmusik von „Star Trek: Discovery“ (Komponist: Jeff Russo).', audio: 'media/audio/theme-finale.m4a', seconds: 45 }
 ];
 
 // --- Fester, reproduzierbarer Mix der Antworten (seed pro Frage) ---
 function seeded(n) { let s = (n * 2654435761) >>> 0; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 function prepare(item, seed, theme, hard) {
+  const extra = { image: item.img || null, audio: item.audio || null, seconds: item.seconds || QUESTION_SECONDS };
+  if (item.keep) return { text: item.q, options: item.o, correct: item.c, explanation: item.e, theme, hard, ...extra };
   const order = [0, 1, 2, 3], rnd = seeded(seed + 7);
   for (let i = 3; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-  return { text: item.q, options: order.map(i => item.o[i]), correct: order.indexOf(0), explanation: item.e, theme, hard, image: item.img || null };
+  return { text: item.q, options: order.map(i => item.o[i]), correct: order.indexOf(0), explanation: item.e, theme, hard, ...extra };
 }
 
 
@@ -166,11 +166,13 @@ export const PACKS = MISSIONS.map((m, p) => {
   return order.map((t, i) => prepare(BANK[THEMES[t]][p], t * 100 + p, THEMES[t], i === 9));
 });
 
-export const QUESTION_TIME_MS = 25000;
+export const QUESTION_TIME_MS = QUESTION_SECONDS * 1000;
 export const GET_READY_MS = 3000;
+/** Answer time of one question in ms (25 s, the music question longer). */
+export function timeFor(pack, q) { return (PACKS[pack]?.[q]?.seconds || QUESTION_SECONDS) * 1000; }
 export function multiplierFor(pack, q) { return PACKS[pack] && PACKS[pack][q] && PACKS[pack][q].hard ? 2.5 : 1; }
 export function pointsFor(pack, q, elapsed) {
-  const t = Math.max(0, Math.min(QUESTION_TIME_MS - 1, elapsed));
-  return Math.round((500 + 500 * (1 - t / QUESTION_TIME_MS)) * multiplierFor(pack, q));
+  const limit = timeFor(pack, q), t = Math.max(0, Math.min(limit - 1, elapsed));
+  return Math.round((500 + 500 * (1 - t / limit)) * multiplierFor(pack, q));
 }
 export function totalQuestions() { return PACKS.reduce((n, p) => n + p.length, 0); }
