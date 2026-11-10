@@ -1,7 +1,7 @@
 // Vulkan Spirit Quiz – browser app (no build step, no dependencies)
 import { MISSIONS, THEME_COLORS, AVATARS, AVATAR_GROUPS, DEFAULT_PRIZE, QUESTION_SECONDS } from './shared.mjs';
 import { qrSvg } from './qr.mjs';
-import { detectMode, serverTransport, localTransport, peerTransport, claimHost } from './net.mjs';
+import { detectMode, serverTransport, localTransport, peerTransport, claimHost, warmUp } from './net.mjs';
 
 const $app = document.getElementById('app');
 const BASE = new URL('.', location.href).href.replace(/[?#].*$/, ''); // works at / and at /repo-name/
@@ -170,23 +170,26 @@ const BAD = ['Picard braucht kurz einen Moment. Dann geht’s weiter.', 'Die Ant
 // LCARS frame: header with elbow + logo, and a side column with live status blocks (hidden on phones)
 function header(extra = '') {
   const offline = ROOM && S.data && !S.online ? '<span class="pill warn">Verbinde …</span>' : '';
-  return `<header class="lc-head"><div class="lc-elbow"><a class="lc-logo" href="./" aria-label="Startseite"><img src="logo.png" alt="Vulkan Spirit"></a></div>
+  return `<header class="lc-head"><div class="lc-elbow"><a class="lc-logo" href="./" aria-label="Startseite"><img src="logo.webp" alt="Vulkan Spirit" width="74" height="67"></a></div>
    <div class="lc-headbody"><div class="lc-titlerow">${extra}${offline}<a class="lc-title" href="./">Vulkan Spirit Quiz</a></div>
-   <div class="lc-bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div></header>${side()}`;
+   <div class="lc-bar" aria-hidden="true"><i>${stardate()}</i><i></i><i>VS-1701</i><i></i><i></i></div></div></header>${side()}`;
 }
+// Decorative stardate: 1000 units per year (changes every ~50 minutes, so it doesn't force re-renders)
+function stardate() { const d = new Date(), y0 = Date.UTC(d.getUTCFullYear(), 0, 1); return 'SD ' + ((d.getUTCFullYear() - 2000) * 1000 + (Date.now() - y0) / 31557600).toFixed(1); }
 function side() { // in a game: live status; on the start page: plain colour blocks
   const d = S.data;
   const phase = !d ? '' : d.phase === 'lobby' ? 'Wartet auf Start' : d.phase === 'question' ? `Frage ${d.q + 1}/${d.total}` : d.phase === 'reveal' ? 'Auflösung' : 'Endstand';
   const blocks = d
     ? [['c2', 'Code ' + d.code], ['c4', d.mission], ['c3', `${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'}`], ['c5', phase]]
     : [['c2', ''], ['c4', ''], ['c3', ''], ['c5', '']];
-  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t]) => `<div class="lc-block ${c}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow"></div></aside>`;
+  const nums = ['02-4719', '47-0815', '03-1966', '74-6560'];
+  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t], i) => `<div class="lc-block ${c}" data-n="${nums[i]}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow"></div></aside>`;
 }
 function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
   return `<label class="mission ${selected ? 'sel' : ''}"><input type="radio" name="${name}" value="${i}" ${selected ? 'checked' : ''}>
   <img src="${m.image}" alt="" loading="lazy"><span class="mname">${esc(m.name)}</span>
-  <span class="minfo">${m.finale ? '5 Bonusfragen · mit Musikfrage' : '9 faire Fragen + 1 Knackfrage · 2,5×'}</span></label>`;
+  <span class="minfo">${m.finale ? '5 Bonusfragen · inkl. Musikfrage' : '9 Fragen + 1 Knackfrage mit 2,5×'}</span></label>`;
 }
 function timerHtml(d) {
   return `<div class="timer" data-timer><span data-sec>${Math.round((d.deadline - d.started) / 1000)}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
@@ -256,26 +259,26 @@ function scoreList(d, max = 99, showLast = false) {
 }
 function countdownBlock(d) {
   const pre = now() < d.started;
-  return pre ? `<div class="getready"><span>Bereit machen …</span><b data-pre>3</b></div>` : '';
+  return pre ? `<div class="getready"><span>Achtung, Brücke …</span><b data-pre>3</b></div>` : '';
 }
 
 // HOME ---------------------------------------------------
 function viewHome() {
   const last = store.get('warp-last-host'), H = S.home;
   return `${header()}<main class="home">
-  <section class="hero"><img src="logo.png" alt="Vulkan Spirit Wappen" width="230" height="207"><div><h1><span>Live long and quiz</span>Vulkan Spirit Quiz</h1>
-    <p>Das Star-Trek-Quiz für Conventions und Fan-Treffen: Tretet als Team gegen andere Fans an, sammelt Punkte und gewinnt Preise! Mitmachen per QR-Code mit dem Handy – ohne Anmeldung, ohne App.</p></div></section>
-  <section class="card join-card tv-hide"><h2>Team beitreten</h2>
+  <section class="hero"><img src="logo.webp" alt="Vulkan Spirit Wappen" width="230" height="207" fetchpriority="high"><div><h1><span>Wissen · die letzte Grenze</span>Vulkan Spirit Quiz</h1>
+    <p>Das Star-Trek-Quiz der Vulkan Spirit Crew für Conventions und Fan-Abende: Crews treten gegeneinander an, sammeln Punkte und holen sich die Belohnung. QR-Code scannen, Teamname eingeben, los geht’s – ohne Anmeldung, ohne App.</p></div></section>
+  <section class="card join-card tv-hide"><h2>An Bord kommen</h2>
     <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="SPIELCODE" value="${esc(H.code)}" aria-label="Sechsstelliger Spielcode">
-    <button class="btn primary">Mitspielen →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>
-  <section class="card"><h2>Quiz leiten</h2><p class="muted">Mission wählen – jede Mission mischt alle zehn Themen.</p>
+    <button class="btn primary">Beitreten →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>
+  <section class="card"><h2>Brücke übernehmen</h2><p class="muted">Schiff wählen – jede Mission enthält Fragen aus allen zehn Themenbereichen.</p>
     <div class="missions" data-group="home-pack">${MISSIONS.map((_, i) => missionCard(i, i === H.pack)).join('')}</div>
-    <label class="field">Preis für das Siegerteam<input data-prize maxlength="80" value="${esc(H.prize)}"></label>
-    <button class="btn primary big" data-act="create" ${S.busy ? 'disabled' : ''}>Quiz erstellen →</button>
-    ${last ? `<p><a class="btn ghost" href="./?room=${esc(last)}">Letztes Quiz (${esc(last)}) fortsetzen</a></p>` : ''}</section>
-  <section class="card solo-card"><h2>Allein üben</h2><p class="muted">Keine Teams zur Hand? Spielt die oben gewählte Mission allein auf diesem Gerät – mit Timer, Punkten und Auflösung.</p>
-    <label class="field">Euer Name<input data-soloname maxlength="24" autocomplete="off" placeholder="z. B. Kadett Kirk" value="${esc(H.solo)}"></label>
-    <button class="btn big" data-act="solo" ${S.busy ? 'disabled' : ''}>Solo-Mission starten →</button></section>
+    <label class="field">Belohnung für die Siegercrew<input data-prize maxlength="80" value="${esc(H.prize)}"></label>
+    <button class="btn primary big" data-act="create" ${S.busy ? 'disabled' : ''}>Mission eröffnen →</button>
+    ${last ? `<p><a class="btn ghost" href="./?room=${esc(last)}">Zurück zur Mission ${esc(last)}</a></p>` : ''}</section>
+  <section class="card solo-card"><h2>Holodeck-Training</h2><p class="muted">Gerade keine Crews da? Spiel die oben gewählte Mission allein auf diesem Gerät – mit Countdown, Punkten und Auflösung.</p>
+    <label class="field">Dein Name<input data-soloname maxlength="24" autocomplete="off" placeholder="z. B. Kadett Kirk" value="${esc(H.solo)}"></label>
+    <button class="btn big" data-act="solo" ${S.busy ? 'disabled' : ''}>Training starten →</button></section>
   ${footer()}</main>`;
 }
 function footer() {
@@ -288,11 +291,11 @@ function viewLobbyShared(d, host) {
   const qr = qrSvg(joinUrl());
   return `<section class="lobby ${host ? '' : 'screen-lobby'}">
    <div class="qrbox"><div class="qr">${qr}</div><div class="code"><small>SPIELCODE</small><b>${esc(d.code)}</b></div><div class="url">${esc(joinUrl().replace(/^https?:\/\//, ''))}</div></div>
-   <div class="lobby-side"><div class="mission-banner"><img src="${MISSIONS[d.pack].image}" alt=""><div><small>EURE MISSION</small><b>${esc(d.mission)}</b>
+   <div class="lobby-side"><div class="mission-banner"><img src="${MISSIONS[d.pack].image}" alt=""><div><small>MISSIONSZIEL</small><b>${esc(d.mission)}</b>
      <span>${d.total} Fragen · ${QUESTION_SECONDS} Sekunden pro Frage · 500–1.000 Punkte${d.total === 10 ? ' · Frage 10: 2,5×' : ''}</span></div></div>
-    <div class="prize"><small>PREIS FÜR DAS SIEGERTEAM</small><b>🏆 ${esc(d.prize)}</b></div>
-    <h3>${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'} dabei</h3>
-    <ul class="teamgrid">${d.teams.map(t => `<li>${avatarHtml(t.avatar, t.id)}<span>${esc(t.name)}</span>${host ? `<button class="x" data-kick="${esc(t.id)}" title="Team entfernen" aria-label="${esc(t.name)} entfernen">×</button>` : ''}</li>`).join('') || '<li class="muted wait">Teams scannen den QR-Code …</li>'}</ul>
+    <div class="prize"><small>BELOHNUNG FÜR DIE SIEGERCREW</small><b>🏆 ${esc(d.prize)}</b></div>
+    <h3>${d.teams.length} ${d.teams.length === 1 ? 'Crew' : 'Crews'} an Bord</h3>
+    <ul class="teamgrid">${d.teams.map(t => `<li>${avatarHtml(t.avatar, t.id)}<span>${esc(t.name)}</span>${host ? `<button class="x" data-kick="${esc(t.id)}" title="Team entfernen" aria-label="${esc(t.name)} entfernen">×</button>` : ''}</li>`).join('') || '<li class="muted wait">Warte auf Crews – QR-Code scannen …</li>'}</ul>
    </div></section>`;
 }
 function viewHost() {
@@ -307,18 +310,18 @@ function viewHost() {
         <div class="missions small" data-group="lobby-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.lobbyPack ?? d.pack), 'lpack')).join('')}</div>
         <label class="field">Preis<input data-lobbyprize maxlength="80" value="${esc(S.lobbyPrize ?? d.prize)}"></label>
         <button class="btn" data-act="settings">Übernehmen</button></details>
-      <button class="btn primary big" data-act="start" ${d.teams.length && !S.busy ? '' : 'disabled'}>Spiel starten →</button>
-      ${d.teams.length ? '' : '<p class="muted">Sobald ein Team beigetreten ist, kann es losgehen.</p>'}${hostHint()}
+      <button class="btn primary big" data-act="start" ${d.teams.length && !S.busy ? '' : 'disabled'}>Mission beginnen →</button>
+      ${d.teams.length ? '' : '<p class="muted">Sobald die erste Crew an Bord ist, kann es losgehen.</p>'}${hostHint()}
       <p class="muted small tv-hide">Tipp: Leertaste oder Enter = Weiter / Auflösen.</p><p class="muted small tv-only">Fernbedienung: Pfeiltasten zum Auswählen, OK zum Bestätigen. Die Teams scannen den QR-Code mit dem Handy.</p></section>`;
   } else if (d.phase === 'question' || d.phase === 'reveal') {
     const Q = d.question, reveal = d.phase === 'reveal', last = d.q + 1 >= d.total;
     body = `<section class="stage">${progress(d)}${questionHead(d)}
       ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${d.answeredCount} von ${d.teams.length} Teams haben geantwortet.</span></div>${countdownBlock(d)}`}
       <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-      ${reveal ? `<div class="explain"><small>DAS STECKT DAHINTER</small><p>${esc(Q.explanation)}</p></div>` : ''}
-      <div class="row hostbar">${reveal ? `<button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${last ? 'Ergebnis zeigen →' : 'Weiter →'}</button>` : `<button class="btn primary" data-act="reveal" ${S.busy ? 'disabled' : ''}>Jetzt auflösen</button>`}
+      ${reveal ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div>` : ''}
+      <div class="row hostbar">${reveal ? `<button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${last ? 'Endstand zeigen →' : 'Nächste Frage →'}</button>` : `<button class="btn primary" data-act="reveal" ${S.busy ? 'disabled' : ''}>Lösung zeigen</button>`}
         <button class="btn ghost small" data-act="end">${S.confirmEnd ? 'Wirklich beenden?' : 'Quiz beenden'}</button></div></section>
-      ${reveal ? `<section class="card"><h3>LIVE-RANGLISTE</h3>${scoreList(d, 99, true)}</section>` : ''}`;
+      ${reveal ? `<section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 99, true)}</section>` : ''}`;
   } else body = viewFinished(d, 'host');
   return `${header(`<span class="pill">Spielleitung · ${esc(d.code)}</span>${relayPill()}`)}<main class="host">${err()}${body}</main>`;
 }
@@ -335,16 +338,21 @@ function hostHint() {
 function viewScreen() {
   const d = S.data;
   let body;
-  if (d.phase === 'lobby') body = `<h1 class="screen-title">TEAM BEITRETEN</h1>${viewLobbyShared(d, false)}`;
+  if (d.phase === 'lobby') body = `<h1 class="screen-title">JETZT AN BORD KOMMEN</h1>${viewLobbyShared(d, false)}`;
   else if (d.phase === 'question' || d.phase === 'reveal') {
     const Q = d.question, reveal = d.phase === 'reveal';
     if (!Q.text) body = `<section class="stage">${progress(d)}${questionHead(d)}${countdownBlock(d)}</section>`;
     else body = `<section class="stage big">${progress(d)}${questionHead(d)}
       ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${d.answeredCount} von ${d.teams.length} Teams haben geantwortet.</span></div>${countdownBlock(d)}`}
       <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-      ${reveal ? `<div class="explain"><small>DAS STECKT DAHINTER</small><p>${esc(Q.explanation)}</p></div><section class="card"><h3>LIVE-RANGLISTE</h3>${scoreList(d, 8, true)}</section>` : ''}</section>`;
+      ${reveal ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div><section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 8, true)}</section>` : ''}</section>`;
   } else body = viewFinished(d, 'screen');
   return `${header(`<span class="pill">Beamer · ${esc(d.code)}</span>`)}<main class="screen">${body}</main>`;
+}
+// short looping clip instead of a large GIF (about 30 KB instead of 750 KB)
+function reaction(won) {
+  const f = won ? 'win' : 'lose', alt = won ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion';
+  return `<video class="gif" src="media/${f}.mp4" poster="media/${f}.jpg" autoplay muted loop playsinline aria-label="${alt}"></video>`;
 }
 function viewFinished(d, who) {
   const list = ranked(d.teams), win = winners(d.teams), me = d.me && list.find(t => t.id === d.me.id);
@@ -354,7 +362,7 @@ function viewFinished(d, who) {
     const max = d.total === 10 ? 9 * 1000 + 2500 : d.total * 1000, share = me.score / max;
     const rank = share >= .75 ? ['Captain-Niveau', 'Picard wäre stolz.'] : share >= .5 ? ['Erster Offizier', 'Nummer Eins – fast ganz oben.'] : share >= .25 ? ['Fähnrich', 'Solide. Die Akademie ruft trotzdem.'] : me.score > 0 ? ['Kadett', 'Jeder Captain hat mal so angefangen.'] : ['Rotes Hemd', 'Landurlaub abgesagt. Nächster Versuch?'];
     const pick = S.restartPack ?? Math.min(d.pack + 1, MISSIONS.length - 1);
-    return `<section class="result ${share >= .5 ? 'won' : ''}"><img class="gif" src="media/${share >= .5 ? 'win' : 'lose'}.gif" alt="${share >= .5 ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion'}">
+    return `<section class="result ${share >= .5 ? 'won' : ''}">${reaction(share >= .5)}
       <small>MISSION ${esc(d.mission)} ABGESCHLOSSEN</small><h2>${rank[0].toUpperCase()}</h2>
       <p class="big">${fmt(me.score)} von ${fmt(max)} möglichen Punkten</p><p class="muted">${rank[1]}</p>
       ${me.score > 0 ? `<button class="btn tv-hide" data-diploma="${esc(me.id)}">Diplom herunterladen ↓</button>` : ''}</section>
@@ -362,14 +370,14 @@ function viewFinished(d, who) {
       <button class="btn primary big" data-act="restart">Mission starten →</button></section>`;
   }
   if (who === 'team' && me) {
-    top = `<section class="result ${iWon ? 'won' : ''}"><img class="gif" src="media/${iWon ? 'win' : 'lose'}.gif" alt="${iWon ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion'}">
+    top = `<section class="result ${iWon ? 'won' : ''}">${reaction(iWon)}
       <h2>${iWon ? 'SIEG AUF DER BRÜCKE' : 'HELDEN DER NÄCHSTEN RUNDE'}</h2>
       <p class="big">Platz ${me.place} · ${fmt(me.score)} Punkte</p>${iWon ? `<p>Preis: <b>${esc(d.prize)}</b></p><button class="btn primary tv-hide" data-diploma="${esc(me.id)}">Siegerdiplom herunterladen ↓</button>` : '<p class="muted">Heute kein Pokal. Dafür eine hervorragende Origin-Story.</p>'}</section>`;
   } else {
     top = `<section class="result won"><small>SIEGERTEAM${win.length > 1 ? 'S' : ''}</small>
       ${win.length ? win.map(w => `<div class="winner">${avatarHtml(w.avatar, w.id, 'l')}<h2>${esc(w.name)}</h2></div>`).join('') : '<h2>Kein Siegerteam – alle Antworten sind im Transporterpuffer verschwunden.</h2>'}
       ${win.length ? `<p class="big">${fmt(win[0].score)} Punkte · 🏆 ${esc(d.prize)}</p>` : ''}
-      ${who === 'screen' ? '<img class="gif" src="media/win.gif" alt="Picard applaudiert">' : ''}</section>`;
+      ${who === 'screen' ? reaction(true) : ''}</section>`;
   }
   const hostTools = who === 'host' ? `<section class="card"><div class="row">${win.map(w => `<button class="btn primary tv-hide" data-diploma="${esc(w.id)}">Diplom für ${esc(w.name)} ↓</button>`).join('')}
      <button class="btn tv-hide" data-act="csv">Ergebnis als CSV speichern ↓</button></div>
@@ -382,15 +390,15 @@ function viewFinished(d, who) {
 function viewJoin(d) {
   const J = S.join, groups = AVATAR_GROUPS.map(([id, label]) => `<button type="button" class="tab ${J.group === id ? 'on' : ''}" data-group-tab="${id}">${label}</button>`).join('');
   const list = AVATARS.filter(a => a.group === J.group).map(a => `<button type="button" class="pick ${J.avatar === a.id ? 'on' : ''}" data-avatar="${a.id}" title="${esc(a.tag || a.name)}">${avatarHtml(a.id, '', 'm')}<span>${esc(a.name)}</span></button>`).join('');
-  return `<section class="card joinform"><small class="kicker">TEAM BEITRETEN · ${esc(d.code)}</small>
-   <h2>${esc(d.mission)}</h2><p class="muted">🏆 ${esc(d.prize)} · ${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'} dabei</p>
+  return `<section class="card joinform"><small class="kicker">AN BORD KOMMEN · ${esc(d.code)}</small>
+   <h2>${esc(d.mission)}</h2><p class="muted">🏆 ${esc(d.prize)} · ${d.teams.length} ${d.teams.length === 1 ? 'Crew' : 'Crews'} an Bord</p>
    ${S.kicked ? '<p class="err">Euer Team wurde von der Spielleitung entfernt. Ihr könnt mit einem neuen Namen beitreten.</p>' : ''}
    <label class="field">Teamname<input data-teamname maxlength="24" autocomplete="off" placeholder="z. B. Die Tribble-Bande" value="${esc(J.name)}"></label>
    <div class="field">Teambild<div class="tabs">${groups}<button type="button" class="tab ${J.group === 'upload' ? 'on' : ''}" data-group-tab="upload">Eigenes Bild</button></div>
    ${J.group === 'upload' ? `<div class="upload">${J.upload ? `<span class="av av-l"><img src="${J.upload}" alt=""></span>` : ''}
      <label class="btn">Eigenes Teambild hochladen<input type="file" accept="image/jpeg,image/png,image/webp" data-upload hidden></label>
      <p class="muted small">JPG, PNG oder WebP · maximal 10 MB. Das Bild wird verkleinert und für alle Teams sichtbar.</p></div>` : `<div class="picks">${list}</div>`}</div>
-   <button class="btn primary big" data-act="join" ${S.busy ? 'disabled' : ''}>Mitspielen →</button>${err()}</section>`;
+   <button class="btn primary big" data-act="join" ${S.busy ? 'disabled' : ''}>Crew anmelden →</button>${err()}</section>`;
 }
 function viewTeam() {
   const d = S.data;
@@ -400,28 +408,28 @@ function viewTeam() {
   }
   let body;
   if (d.phase === 'lobby') {
-    body = `<section class="card center"><small class="kicker">TEAM ERFOLGREICH VERBUNDEN</small>${avatarHtml(d.me.avatar, d.me.id, 'l')}<h2>${esc(d.me.name)}</h2>
+    body = `<section class="card center"><small class="kicker">CREW AN BORD</small>${avatarHtml(d.me.avatar, d.me.id, 'l')}<h2>${esc(d.me.name)}</h2>
      <p>Mission <b>${esc(d.mission)}</b> · ${d.total} Fragen · ${QUESTION_SECONDS} Sekunden pro Frage</p><p class="muted">🏆 ${esc(d.prize)}</p>
-     <p class="pulse">Die Spielleitung startet gleich …</p><p class="muted">${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'} dabei</p></section>`;
+     <p class="pulse">Warten auf den Befehl der Brücke …</p><p class="muted">${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'} dabei</p></section>`;
   } else if (d.phase === 'question') {
     const Q = d.question;
     if (!Q.text) body = `<section class="stage">${progress(d)}${questionHead(d)}${countdownBlock(d)}</section>`;
     else {
       const answered = d.answer != null, over = now() >= d.deadline;
-      const msg = answered ? '✓ Antwort gespeichert. Gemeinsam auf die Auflösung warten.' : over ? 'Zeit abgelaufen. Die Lösung kommt gleich.' : d.solo ? 'Die erste Antwort zählt – je schneller, desto mehr Punkte.' : 'Beratet euch kurz. Eure erste Antwort zählt.';
+      const msg = answered ? '✓ Antwort gespeichert. Gemeinsam auf die Auflösung warten.' : over ? 'Zeit abgelaufen. Die Lösung kommt gleich.' : d.solo ? 'Die erste Antwort zählt – je schneller, desto mehr Punkte.' : 'Kurz beraten – nur die erste Antwort zählt.';
       body = `<section class="stage">${progress(d)}${questionHead(d)}<div class="statusline">${timerHtml(d)}<span>${esc(msg)}</span></div>
        <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, !answered && !over)}</section>`;
     }
   } else if (d.phase === 'reveal') {
     const Q = d.question, a = d.answer, ok = a && a.choice === Q.correct, k = d.q % 5;
-    body = `<section class="feedback ${ok ? 'good' : 'bad'}"><h2>${ok ? 'TREFFER!' : a ? 'UPS. NEUE ZEITLINIE.' : 'KEINE ANTWORT ABGEGEBEN'}</h2>
+    body = `<section class="feedback ${ok ? 'good' : 'bad'}"><h2>${ok ? 'VOLLTREFFER!' : a ? 'DANEBEN – ANDERE ZEITLINIE.' : 'FUNKSTILLE – KEINE ANTWORT'}</h2>
       ${ok ? `<p class="big">+${fmt(a.points)} Punkte</p>` : ''}<p>${esc(ok ? GOOD[k] : BAD[k])}</p></section>
       <section class="stage">${questionHead(d)}<h2 class="qtext">${esc(Q.text)}</h2>${optionsHtml(d, false)}
-      <div class="explain"><small>DAS STECKT DAHINTER</small><p>${esc(Q.explanation)}</p></div></section>
+      <div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div></section>
       ${d.solo ? `<section class="card mine-score"><b>${esc(d.me.name)}</b> · ${fmt(d.me.score)} Punkte · Frage ${d.q + 1} von ${d.total}
         <button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${d.q + 1 >= d.total ? 'Ergebnis zeigen →' : 'Nächste Frage →'}</button></section>`
       : `<section class="card mine-score">Euer Team: <b>${esc(d.me.name)}</b> · Platz ${ranked(d.teams).find(t => t.id === d.me.id)?.place ?? '–'} · ${fmt(d.me.score)} Punkte
-      ${d.q + 1 >= d.total - 2 && d.q + 1 < d.total ? '<p class="muted">Endspurt! Die Galaxie drückt die Daumen.</p>' : ''}</section>`}`;
+      ${d.q + 1 >= d.total - 2 && d.q + 1 < d.total ? '<p class="muted">Letzte Sektoren! Die ganze Flotte drückt die Daumen.</p>' : ''}</section>`}`;
   } else body = viewFinished(d, 'team');
   return `${header(`<span class="pill">${avatarHtml(d.me.avatar, d.me.id, 's')} ${esc(d.me.name)}</span>`)}<main class="team">${body}</main>`;
 }
@@ -430,8 +438,22 @@ function viewSpectator(d) {
   const Q = d.question;
   if (!Q?.text) return `<section class="stage">${progress(d)}${countdownBlock(d)}</section>`;
   return `<section class="stage">${progress(d)}${questionHead(d)}<h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-   ${d.phase === 'reveal' ? `<div class="explain"><small>DAS STECKT DAHINTER</small><p>${esc(Q.explanation)}</p></div>` : ''}</section>
-   <section class="card"><h3>LIVE-RANGLISTE</h3>${scoreList(d, 10)}</section>`;
+   ${d.phase === 'reveal' ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div>` : ''}</section>
+   <section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 10)}</section>`;
+}
+// Loading screen for team / projector devices: shows which step is running, and help if it takes long.
+const BOOT_T0 = Date.now();
+function bootView() {
+  const steps = [['lib', 'Funkmodul laden'], ['broker', 'Subraum-Relais anfunken'], ['host', `Brücke ${ROOM} rufen`]];
+  const cur = NET?.stage ? NET.stage() : 'lib', at = Math.max(0, steps.findIndex(s => s[0] === cur));
+  const secs = Math.floor((Date.now() - BOOT_T0) / 1000);
+  const slow = secs >= 12 ? `<div class="boot-help"><p>Das dauert länger als üblich. Meist hilft eines davon:</p>
+    <ul><li>WLAN aus- und mobile Daten einschalten (manche WLANs blockieren die Direktverbindung).</li>
+    <li>Prüfen, ob der Spielcode <b>${esc(ROOM)}</b> stimmt und die Spielleitung das Quiz geöffnet hat.</li></ul>
+    <div class="row"><button class="btn primary" onclick="location.reload()">Neu laden</button><a class="btn ghost" href="./">Anderen Code eingeben</a></div></div>` : '';
+  return `<div class="boot"><div class="boot-panel"><div class="boot-sweep" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <small>Verbindungsaufbau · Code ${esc(ROOM)}</small><h2>Kanal wird geöffnet</h2>
+    <ol class="boot-steps">${steps.map(([, t], i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${t}</li>`).join('')}</ol>${slow}</div></div>`;
 }
 const err = () => (S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : '');
 
@@ -450,7 +472,7 @@ function render(force = false) {
   if (!ROOM) html = viewHome();
   else if (!S.data) html = S.error
     ? `${header()}<main class="team"><section class="card center"><h2>Spiel nicht gefunden</h2><p>${esc(S.error)}</p><a class="btn primary" href="./">Zur Startseite</a></section></main>`
-    : `<div class="boot">Verbindung zur Flotte …</div>`;
+    : bootView();
   else html = role() === 'screen' ? viewScreen() : role() === 'host' ? viewHost() : viewTeam();
   if (S.toast) html += `<div class="toast" role="status">${esc(S.toast)}</div>`;
   if (zoomSrc) html += `<div class="zoom" data-unzoom><img src="${zoomSrc}" alt="Vergrößertes Fragenbild"><button class="btn" data-unzoom>Schließen</button></div>`;
@@ -637,6 +659,7 @@ async function connect() {
   MODE = await detectMode();
   return MODE === 'server' ? serverTransport() : peerTransport(ROOM, { onChange: () => render() });
 }
+if (ROOM && (SCREEN || FORCE_TEAM || !store.get('vs-room-' + ROOM))) warmUp(); // team/screen device: fetch PeerJS right away
 render(true);
 if (ROOM) {
   try { NET = await connect(); } catch (e) { S.error = e.message; S.pollError = true; render(true); }

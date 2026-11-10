@@ -18,10 +18,25 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preload" href="fonts/antonio.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/app.css">
+<!-- fetch all start-up modules in parallel instead of one after another -->
+<link rel="modulepreload" href="js/app.mjs">
+<link rel="modulepreload" href="js/shared.mjs">
+<link rel="modulepreload" href="js/net.mjs">
+<link rel="modulepreload" href="js/qr.mjs">
+<script>
+  // Team phones (join link with ?room=): start loading the radio module and open the line to the
+  // PeerJS relay right away – this is the slowest part of joining.
+  if (/[?&]room=/.test(location.search)) {
+    var l = document.createElement('link'); l.rel = 'preload'; l.as = 'script'; l.href = 'vendor/peerjs.min.js'; document.head.appendChild(l);
+    var c = document.createElement('link'); c.rel = 'preconnect'; c.href = 'https://0.peerjs.com'; c.crossOrigin = ''; document.head.appendChild(c);
+  } else {
+    var h = document.createElement('link'); h.rel = 'preload'; h.as = 'image'; h.href = 'logo.webp'; document.head.appendChild(h);
+  }
+</script>
 <script type="module" src="js/app.mjs"></script>
 </head>
 <body>
-<div id="app" aria-live="polite"><div class="boot">Verbindung zur Flotte …</div></div>
+<div id="app" aria-live="polite"><div class="boot"><div class="boot-panel"><div class="boot-sweep" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><small>Vulkan Spirit Quiz</small><h2>Systeme starten …</h2></div></div></div>
 <noscript><p class="boot">Bitte JavaScript aktivieren, um am Quiz teilzunehmen.</p></noscript>
 </body>
 </html>

@@ -4,6 +4,7 @@
 //  peer:   a team device talks to the host browser peer-to-peer (WebRTC via PeerJS)
 const PEER_PREFIX = 'vulkan-spirit-quiz-v2-';
 const TIMEOUT = 8000;
+const OPEN_TIMEOUT = 15000; // the public PeerJS broker can be slow to answer – give it more time before starting over
 
 class NetError extends Error { constructor(status, message) { super(message); this.status = status; } }
 const OFFLINE = 'Die Verbindung zur Flotte ist gestört.';
@@ -24,6 +25,8 @@ export async function detectMode() {
 }
 
 let peerLib;
+/** Start downloading PeerJS early (while the rest of the page is still being set up). */
+export function warmUp() { loadPeer().catch(() => { /* retried when needed */ }); }
 function loadPeer() {
   peerLib ||= new Promise((resolve, reject) => {
     if (window.peerjs) return resolve(window.peerjs.Peer);
@@ -102,15 +105,19 @@ export function localTransport(engine, { serve = true, onChange } = {}) {
 // --- team / screen device: talk to the host browser ---
 export function peerTransport(code, { onChange } = {}) {
   let peer = null, conn = null, ready = null, seq = 0, status = 'connecting', everConnected = false, hostMissing = false;
+  let stage = 'lib'; // lib → broker → host → ok (shown on the loading screen)
+  const setStage = s => { if (s !== stage) { stage = s; onChange?.(); } };
   const pending = new Map();
   const setStatus = s => { if (s !== status) { status = s; onChange?.(); } };
   async function ensurePeer() {
     if (peer && !peer.destroyed && !peer.disconnected) return peer;
+    if (!everConnected) setStage('lib');
     const Peer = await loadPeer();
     try { peer?.destroy(); } catch { /* */ }
+    if (!everConnected) setStage('broker');
     peer = new Peer({ debug: 0 });
     await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new NetError(0, OFFLINE)), TIMEOUT);
+      const t = setTimeout(() => reject(new NetError(0, OFFLINE)), OPEN_TIMEOUT);
       peer.once('open', () => { clearTimeout(t); resolve(); });
       peer.once('error', e => { clearTimeout(t); reject(new NetError(0, OFFLINE)); });
     });
@@ -124,6 +131,7 @@ export function peerTransport(code, { onChange } = {}) {
   function connect() {
     ready ||= (async () => {
       const p = await ensurePeer();
+      if (!everConnected) setStage('host');
       const c = p.connect(PEER_PREFIX + code, { reliable: true });
       await new Promise((resolve, reject) => {
         const t = setTimeout(() => { try { c.close(); } catch { /* */ } reject(new NetError(0, OFFLINE)); }, TIMEOUT);
@@ -133,7 +141,7 @@ export function peerTransport(code, { onChange } = {}) {
       c.on('data', msg => { const w = pending.get(msg?.id); if (w) { pending.delete(msg.id); w(msg.res); } });
       const lost = () => { if (conn === c) { conn = null; ready = null; setStatus('connecting'); } };
       c.on('close', lost); c.on('error', lost);
-      conn = c; everConnected = true; hostMissing = false; setStatus('ok');
+      conn = c; everConnected = true; hostMissing = false; stage = 'ok'; setStatus('ok');
       return c;
     })().catch(e => { ready = null; if (!hostMissing) setStatus('connecting'); throw e; });
     return ready;
@@ -152,6 +160,7 @@ export function peerTransport(code, { onChange } = {}) {
       return res.body;
     },
     status: () => status,
+    stage: () => stage,
     everConnected: () => everConnected,
     hostMissing: () => hostMissing
   };
