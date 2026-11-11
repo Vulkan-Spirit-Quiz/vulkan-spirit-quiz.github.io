@@ -212,9 +212,11 @@ function side() { // in a game: live status; on the start page: plain colour blo
 // blocks light up now and then. It only touches the DOM (never the render string), so it survives re-renders.
 const lcDigits = n => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join('');
 const lcRow = () => `${lcDigits(2)} ${lcDigits(4)} ${lcDigits(Math.random() < .5 ? 3 : 2)}`;
-const LC_ROWS = Array.from({ length: 9 }, lcRow);
+const LC_ROWS = Array.from({ length: 12 }, lcRow);
 function lcarsLive() {
   let step = 0;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const flash = (el, ms = 500) => { if (!el) return; el.classList.add('lit'); setTimeout(() => el.classList.remove('lit'), ms); };
   setInterval(() => {
     const side = $app.querySelector('.lc-side');
     if (document.hidden || !side || !side.offsetParent) return; // hidden on phones
@@ -223,17 +225,15 @@ function lcarsLive() {
     const data = side.querySelector('.lc-data');
     if (data) {
       data.innerHTML = LC_ROWS.map((r, i) => `<i${i === LC_ROWS.length - 1 ? ' class="new"' : ''}>${r}</i>`).join('');
-      if (Math.random() < .25) data.children[Math.floor(Math.random() * LC_ROWS.length)]?.classList.add('hi');
+      if (Math.random() < .5) pick([...data.children])?.classList.add('hi');
     }
     const blocks = [...side.querySelectorAll('.lc-block')];
-    if (step % 3 === 0) { // one block's code counts on
-      const b = blocks[Math.floor(Math.random() * blocks.length)];
-      if (b?.dataset.n) b.dataset.n = `${lcDigits(2)}-${lcDigits(4)}`;
-    }
-    const flash = (el, ms = 450) => { if (!el) return; el.classList.add('lit'); setTimeout(() => el.classList.remove('lit'), ms); };
-    if (Math.random() < .12) flash(blocks[Math.floor(Math.random() * blocks.length)]);
-    if (step % 40 === 0) [side.querySelector('.lc-elbow2'), ...blocks].forEach((el, i) => setTimeout(() => flash(el, 260), i * 110)); // top-to-bottom chase
-  }, 320);
+    const bars = [...$app.querySelectorAll('.lc-bar i')];
+    if (step % 2 === 0) { const b = pick(blocks); if (b?.dataset.n) b.dataset.n = `${lcDigits(2)}-${lcDigits(4)}`; } // codes count on
+    if (Math.random() < .35) flash(pick(blocks));
+    if (Math.random() < .2) flash(pick(bars), 350);
+    if (step % 22 === 0) [side.querySelector('.lc-elbow2'), ...blocks].forEach((el, i) => setTimeout(() => flash(el, 300), i * 90)); // top-to-bottom chase
+  }, 260);
 }
 function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
