@@ -51,7 +51,7 @@ const EN = {
   'Dein Name': 'Your name', 'z. B. Kadett Kirk': 'e.g. Cadet Kirk', 'Training starten →': 'Start training →', 'Kadett': 'Cadet',
   'Fragen &amp; Quellen': 'Questions &amp; sources', 'Bild- &amp; Schriftquellen': 'Image &amp; font credits',
   'Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS.': 'Unofficial fan project by Vulkan Spirit. Star Trek is a trademark of Paramount/CBS.',
-  '5 Bonusfragen · inkl. Musikfrage': '5 bonus questions · incl. music question', '9 Fragen + 1 Knackfrage mit 2,5×': '9 questions + 1 tough one worth 2.5×',
+  '5 Bonusfragen · inkl. Musikfrage': '5 bonus questions · incl. music question', '10 Fragen': '10 questions',
   // question
   'Frage {n} von {total}': 'Question {n} of {total}', 'KNACKFRAGE · 2,5× PUNKTE': 'TOUGH QUESTION · 2.5× POINTS', '♫ MUSIKFRAGE · {s} SEKUNDEN': '♫ MUSIC QUESTION · {s} SECONDS',
   '⏸ Musik pausieren': '⏸ Pause music', '↺ Musik nochmal': '↺ Play again', '▶ Musik abspielen': '▶ Play music',
@@ -61,7 +61,7 @@ const EN = {
   '{a} von {b} Teams haben geantwortet.': '{a} of {b} teams have answered.',
   // lobby / host
   'MISSIONSZIEL': 'MISSION', 'BELOHNUNG FÜR DIE SIEGERCREW': 'PRIZE FOR THE WINNING CREW',
-  '{n} Fragen · {s} Sekunden pro Frage · 500–1.000 Punkte': '{n} questions · {s} seconds per question · 500–1,000 points', ' · Frage 10: 2,5×': ' · question 10: 2.5×',
+  '{n} Fragen · {s} Sekunden pro Frage · 500–1.000 Punkte': '{n} questions · {s} seconds per question · 500–1,000 points',
   '{n} {crews} an Bord': '{n} {crews} aboard', 'Team entfernen': 'Remove team', '{name} entfernen': 'Remove {name}', 'Warte auf Crews – QR-Code scannen …': 'Waiting for crews – scan the QR code …',
   'Link für Teams kopieren': 'Copy link for teams', 'QR-Code speichern ↓': 'Save QR code ↓', 'Bildschirm öffnen ↗': 'Open projector screen ↗', 'Leitungslink sichern': 'Save host link',
   'Mission oder Preis ändern': 'Change mission or prize', 'Preis': 'Prize', 'Übernehmen': 'Apply', 'Mission beginnen →': 'Start mission →',

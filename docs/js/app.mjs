@@ -206,13 +206,40 @@ function side() { // in a game: live status; on the start page: plain colour blo
     ? [['c2', t('Code {code}', { code: d.code })], ['c4', d.mission], ['c3', `${d.teams.length} ${tn(d.teams.length, 'Team', 'Teams')}`], ['c5', phase]]
     : [['c2', ''], ['c4', ''], ['c3', ''], ['c5', '']];
   const nums = ['02-4719', '47-0815', '03-1966', '74-6560'];
-  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t], i) => `<div class="lc-block ${c}" data-n="${nums[i]}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow"></div></aside>`;
+  return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t], i) => `<div class="lc-block ${c}" data-n="${nums[i]}">${esc(t)}</div>`).join('')}<div class="lc-data">${LC_ROWS.map(r => `<i>${r}</i>`).join('')}</div><div class="lc-block c1 grow"></div></aside>`;
+}
+// Living side column, like a real LCARS console: the data readout scrolls, block codes count on and
+// blocks light up now and then. It only touches the DOM (never the render string), so it survives re-renders.
+const lcDigits = n => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join('');
+const lcRow = () => `${lcDigits(2)} ${lcDigits(4)} ${lcDigits(Math.random() < .5 ? 3 : 2)}`;
+const LC_ROWS = Array.from({ length: 9 }, lcRow);
+function lcarsLive() {
+  let step = 0;
+  setInterval(() => {
+    const side = $app.querySelector('.lc-side');
+    if (document.hidden || !side || !side.offsetParent) return; // hidden on phones
+    step++;
+    LC_ROWS.shift(); LC_ROWS.push(lcRow()); // the readout scrolls up one line
+    const data = side.querySelector('.lc-data');
+    if (data) {
+      data.innerHTML = LC_ROWS.map((r, i) => `<i${i === LC_ROWS.length - 1 ? ' class="new"' : ''}>${r}</i>`).join('');
+      if (Math.random() < .25) data.children[Math.floor(Math.random() * LC_ROWS.length)]?.classList.add('hi');
+    }
+    const blocks = [...side.querySelectorAll('.lc-block')];
+    if (step % 3 === 0) { // one block's code counts on
+      const b = blocks[Math.floor(Math.random() * blocks.length)];
+      if (b?.dataset.n) b.dataset.n = `${lcDigits(2)}-${lcDigits(4)}`;
+    }
+    const flash = (el, ms = 450) => { if (!el) return; el.classList.add('lit'); setTimeout(() => el.classList.remove('lit'), ms); };
+    if (Math.random() < .12) flash(blocks[Math.floor(Math.random() * blocks.length)]);
+    if (step % 40 === 0) [side.querySelector('.lc-elbow2'), ...blocks].forEach((el, i) => setTimeout(() => flash(el, 260), i * 110)); // top-to-bottom chase
+  }, 320);
 }
 function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
   return `<label class="mission ${selected ? 'sel' : ''}"><input type="radio" name="${name}" value="${i}" ${selected ? 'checked' : ''}>
   <img src="${m.image}" alt="" loading="lazy"><span class="mname">${esc(m.name)}</span>
-  <span class="minfo">${m.finale ? t('5 Bonusfragen · inkl. Musikfrage') : t('9 Fragen + 1 Knackfrage mit 2,5×')}</span></label>`;
+  <span class="minfo">${m.finale ? t('5 Bonusfragen · inkl. Musikfrage') : t('10 Fragen')}</span></label>`;
 }
 function timerHtml(d) {
   return `<div class="timer" data-timer><span data-sec>${Math.round((d.deadline - d.started) / 1000)}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
@@ -317,7 +344,7 @@ function viewLobbyShared(d, host) {
   return `<section class="lobby ${host ? '' : 'screen-lobby'}">
    <div class="qrbox"><div class="qr">${qr}</div><div class="code"><small>${t('SPIELCODE')}</small><b>${esc(d.code)}</b></div><div class="url">${esc(joinUrl().replace(/^https?:\/\//, ''))}</div></div>
    <div class="lobby-side"><div class="mission-banner"><img src="${MISSIONS[d.pack].image}" alt=""><div><small>${t('MISSIONSZIEL')}</small><b>${esc(d.mission)}</b>
-     <span>${t('{n} Fragen · {s} Sekunden pro Frage · 500–1.000 Punkte', { n: d.total, s: QUESTION_SECONDS })}${d.total === 10 ? t(' · Frage 10: 2,5×') : ''}</span></div></div>
+     <span>${t('{n} Fragen · {s} Sekunden pro Frage · 500–1.000 Punkte', { n: d.total, s: QUESTION_SECONDS })}</span></div></div>
     <div class="prize"><small>${t('BELOHNUNG FÜR DIE SIEGERCREW')}</small><b>🏆 ${esc(msg(d.prize))}</b></div>
     <h3>${t('{n} {crews} an Bord', { n: d.teams.length, crews: tn(d.teams.length, 'Crew', 'Crews') })}</h3>
     <ul class="teamgrid">${d.teams.map(x => `<li>${avatarHtml(x.avatar, x.id)}<span>${esc(x.name)}</span>${host ? `<button class="x" data-kick="${esc(x.id)}" title="${t('Team entfernen')}" aria-label="${t('{name} entfernen', { name: esc(x.name) })}">×</button>` : ''}</li>`).join('') || `<li class="muted wait">${t('Warte auf Crews – QR-Code scannen …')}</li>`}</ul>
@@ -699,4 +726,4 @@ if (ROOM) {
   // when the clock runs out, ask the server straight away (it reveals automatically)
   setInterval(() => { const d = S.data; if (d?.phase === 'question' && now() > d.deadline + 700 && now() < d.deadline + 1500) poll(); }, 250);
 }
-if (!reduceMotion) document.documentElement.classList.add('motion');
+if (!reduceMotion) { document.documentElement.classList.add('motion'); lcarsLive(); }
