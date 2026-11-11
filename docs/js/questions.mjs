@@ -5,6 +5,7 @@
 // Die Frage mit Index t im Thema t ist die schwierige Schlussfrage (Frage 10) von Mission t.
 
 import { MISSIONS, QUESTION_SECONDS } from './shared.mjs';
+import { BANK_EN, FINALE_EN, THEMES_EN } from './questions-en.mjs';
 export { MISSIONS };
 
 export const THEMES = [
@@ -147,23 +148,25 @@ const FINALE = [
 
 // --- Fester, reproduzierbarer Mix der Antworten (seed pro Frage) ---
 function seeded(n) { let s = (n * 2654435761) >>> 0; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-function prepare(item, seed, theme, hard) {
-  const extra = { image: item.img || null, audio: item.audio || null, seconds: item.seconds || QUESTION_SECONDS };
-  if (item.keep) return { text: item.q, options: item.o, correct: item.c, explanation: item.e, theme, hard, ...extra };
+// en = the same question from questions-en.mjs; its answers get exactly the same shuffle.
+function prepare(item, en, seed, theme, hard) {
+  const extra = { image: item.img || null, audio: item.audio || null, seconds: item.seconds || QUESTION_SECONDS, themeEn: THEMES_EN[theme] || theme };
+  if (item.keep) return { text: item.q, options: item.o, correct: item.c, explanation: item.e, theme, hard, ...extra, en: { text: en.q, options: en.o, explanation: en.e } };
   const order = [0, 1, 2, 3], rnd = seeded(seed + 7);
   for (let i = 3; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-  return { text: item.q, options: order.map(i => item.o[i]), correct: order.indexOf(0), explanation: item.e, theme, hard, ...extra };
+  return { text: item.q, options: order.map(i => item.o[i]), correct: order.indexOf(0), explanation: item.e, theme, hard, ...extra,
+    en: { text: en.q, options: order.map(i => en.o[i]), explanation: en.e } };
 }
 
 
 // Mission p (0–9): je eine Frage aus jedem Thema; das Thema p kommt zuletzt und ist die Knackfrage.
 export const PACKS = MISSIONS.map((m, p) => {
-  if (m.finale) return FINALE.map((item, i) => prepare(item, 1000 + i, 'Kobayashi Maru', false));
+  if (m.finale) return FINALE.map((item, i) => prepare(item, FINALE_EN[i], 1000 + i, 'Kobayashi Maru', false));
   const order = THEMES.map((_, t) => t).filter(t => t !== p);
   const rnd = seeded(500 + p);
   for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
   order.push(p);
-  return order.map((t, i) => prepare(BANK[THEMES[t]][p], t * 100 + p, THEMES[t], i === 9));
+  return order.map((t, i) => prepare(BANK[THEMES[t]][p], BANK_EN[THEMES[t]][p], t * 100 + p, THEMES[t], i === 9));
 });
 
 export const QUESTION_TIME_MS = QUESTION_SECONDS * 1000;

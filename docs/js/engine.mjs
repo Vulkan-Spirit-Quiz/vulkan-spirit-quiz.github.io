@@ -95,10 +95,11 @@ export class Engine {
     if ((R.phase === 'question' || R.phase === 'reveal') && R.q >= 0 && questions[R.q]) {
       const Q = questions[R.q];
       const visible = R.phase === 'reveal' || host || now >= R.started - 250;
-      out.question = { number: R.q + 1, theme: Q.theme, hard: Q.hard, multiplier: Q.hard ? 2.5 : 1 };
-      if (visible) Object.assign(out.question, { text: Q.text, options: Q.options, image: Q.image, audio: Q.audio || null, seconds: Q.seconds });
+      out.question = { number: R.q + 1, theme: Q.theme, themeEn: Q.themeEn, hard: Q.hard, multiplier: Q.hard ? 2.5 : 1 };
+      if (visible) Object.assign(out.question, { text: Q.text, options: Q.options, image: Q.image, audio: Q.audio || null, seconds: Q.seconds, en: { text: Q.en.text, options: Q.en.options } });
       if (R.phase === 'reveal') {
         Object.assign(out.question, { correct: Q.correct, explanation: Q.explanation });
+        out.question.en.explanation = Q.en.explanation;
         out.stats = [0, 0, 0, 0]; for (const a of R.answers) if (a.q === R.q) out.stats[a.choice]++;
       }
       if (me) {

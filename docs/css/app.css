@@ -229,6 +229,19 @@ form[data-form] .btn { flex: none; }
 .screen-lobby .teamgrid li { font-size: 22px; } .screen-lobby .teamgrid .av-m { width: 64px; height: 64px; }
 .screen .scores li { font-size: 22px; } .screen .pts { font-size: 26px; } .screen .explain p { font-size: 24px; }
 
+/* ---------- language switch (DE / EN / DE+EN) ---------- */
+.lang-switch { display: inline-flex; gap: 3px; flex: none; }
+.lang-switch button { font: 700 15px/1 var(--head); letter-spacing: .06em; padding: 6px 11px; min-height: 32px; border: 0; background: var(--panel2); color: var(--violet); cursor: pointer; touch-action: manipulation; }
+.lang-switch button:first-child { border-radius: 99px 0 0 99px; } .lang-switch button:last-child { border-radius: 0 99px 99px 0; }
+.lang-switch button[aria-pressed="true"] { background: var(--orange); color: #000; }
+.lang-switch button:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.boot-panel .lang-switch { margin-top: 18px; }
+/* DE+EN: the English line under the German one */
+.tr { display: block; margin-top: .2em; font-size: .78em; font-weight: 500; font-style: italic; color: var(--sky); }
+.opt > span:first-of-type:has(.tr) { flex-direction: column; align-items: flex-start; justify-content: center; }
+.opt .tr { font-size: .85em; }
+.explain .tr { color: var(--muted); }
+
 /* ---------- phones & small tablets ---------- */
 @media (max-width: 860px) {
   :root { --side: 0px; --bar: 12px; }
@@ -243,6 +256,7 @@ form[data-form] .btn { flex: none; }
   .lc-side { display: none; }
   #app > main { grid-column: 1; padding: 18px 14px calc(40px + env(safe-area-inset-bottom)); }
   .pill { font-size: 14px; padding: 3px 12px; }
+  .lang-switch { margin-left: auto; } .lang-switch button { min-height: 36px; padding: 6px 13px; }
   .home .hero { grid-template-columns: 1fr; text-align: center; justify-items: center; gap: 10px; }
   .home .hero .stats { justify-content: center; }
   .lobby, .screen-lobby { grid-template-columns: 1fr; }

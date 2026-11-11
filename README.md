@@ -5,7 +5,7 @@ Die Spielleitung startet ein Quiz, Teams treten per QR-Code mit dem Handy bei, e
 
 **▶ Jetzt spielen: https://vulkan-spirit-quiz.github.io/**
 
-*English: A German-language Star Trek team quiz. One device hosts, teams join by scanning a QR code, a projector shows questions and scores. Runs entirely on GitHub Pages – the host's browser is the game server and phones connect to it peer-to-peer (WebRTC). There is also a solo practice mode.*
+*English: A German/English Star Trek team quiz – every phone picks its own language, the projector can show both. One device hosts, teams join by scanning a QR code, a projector shows questions and scores. Runs entirely on GitHub Pages – the host's browser is the game server and phones connect to it peer-to-peer (WebRTC). There is also a solo practice mode.*
 
 ## So wird gespielt
 1. **Spielleitung** öffnet die Seite, wählt eine Mission und klickt **„Quiz erstellen“**.
@@ -35,6 +35,7 @@ Die App zeigt die Webseite im Vollbild, hält den Bildschirm wach und braucht In
 ## Was ist drin
 - **11 Missionen**: 10 Schiffe mit je 10 Fragen (eine aus jedem der 10 Themen) und das **Kobayashi-Maru-Finale** (5 Bonusfragen, die letzte ist eine Musikfrage mit 45 Sekunden Zeit) – 105 Fragen insgesamt.
 - Automatische Auflösung, sobald alle Teams geantwortet haben oder die Zeit um ist.
+- **Deutsch / English**: Jedes Handy wählt oben rechts seine Sprache (startet in der Handysprache). Spielleitung und Beamer können zusätzlich **DE+EN** zeigen – Frage, Antworten und Erklärung zweisprachig. Englische Fragen: `docs/js/questions-en.mjs` (gleiche Reihenfolge, richtige Antwort zuerst).
 - Teambilder: 14 Charakterfotos, Völker, Uniformen, Technik, Tiere & Snacks oder ein eigenes Foto.
 - Spielleitung: QR-Code speichern, Link kopieren, Beamer-Ansicht, Teams entfernen, Mission/Preis vor dem Start ändern, Quiz beenden.
 - Tastatur: **Leertaste/Enter** = Weiter/Auflösen (Spielleitung), **A–D** oder **1–4** = Antworten.

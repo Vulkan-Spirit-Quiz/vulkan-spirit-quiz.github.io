@@ -15,8 +15,16 @@ PACKS.forEach((pack, p) => {
     if (!q.text || !q.explanation) errors.push(where + ': Text oder Erklärung fehlt');
     if (q.options.length !== 4 || new Set(q.options).size !== 4) errors.push(where + ': braucht 4 verschiedene Antworten');
     if (!(q.correct >= 0 && q.correct < 4)) errors.push(where + ': richtige Antwort fehlt');
+    // English version (questions-en.mjs): complete, 4 different answers, same answer order
+    if (!q.en?.text || !q.en?.explanation) errors.push(where + ': englischer Text oder Erklärung fehlt');
+    if (q.en?.options?.length !== 4 || new Set(q.en?.options).size !== 4) errors.push(where + ': braucht 4 verschiedene englische Antworten');
+    if (!q.themeEn) errors.push(where + ': englisches Thema fehlt');
   });
 });
+// Numbers and codes (42, 2063, NCC-1701 …) read the same in both languages: they must be in the same slot.
+PACKS.flat().forEach((q, i) => q.options.forEach((o, j) => {
+  if (/\d/.test(o) && !/[a-zäöüß ]/.test(o) && q.en && q.en.options[j] !== o) errors.push(`Frage ${i + 1}: Antwort „${o}“ steht englisch an anderer Stelle („${q.en.options[j]}“)`);
+}));
 if (pointsFor(0, 9, 0) > 2500) errors.push('Punkte über dem Datenbanklimit (2500)');
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log(`Fragenkatalog ok: ${PACKS.reduce((n, p) => n + p.length, 0)} Fragen in ${PACKS.length} Missionen.`);

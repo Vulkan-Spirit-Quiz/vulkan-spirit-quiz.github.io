@@ -2,6 +2,8 @@
 import { MISSIONS, THEME_COLORS, AVATARS, AVATAR_GROUPS, DEFAULT_PRIZE, QUESTION_SECONDS } from './shared.mjs';
 import { qrSvg } from './qr.mjs';
 import { detectMode, serverTransport, localTransport, peerTransport, claimHost, warmUp } from './net.mjs';
+import { t, tn, getLang, setLang, uiEn, locale } from './i18n.mjs';
+const tr = t; // inside event handlers `t` is the clicked element
 
 const $app = document.getElementById('app');
 const BASE = new URL('.', location.href).href.replace(/[?#].*$/, ''); // works at / and at /repo-name/
@@ -43,8 +45,29 @@ const S = {
 };
 const now = () => Date.now() + S.offset;
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('de-AT');
+const fmt = n => Number(n || 0).toLocaleString(locale());
 const role = () => (SCREEN ? 'screen' : S.data?.solo ? 'team' : S.data?.isHost ? 'host' : 'team');
+
+// ---------- language ----------
+// Phones choose DE or EN; the host and the projector can also show both (German + English underneath).
+const bothAllowed = () => !!ROOM && (role() === 'host' || role() === 'screen');
+const lang = () => (getLang() === 'both' && !bothAllowed() ? 'de' : getLang());
+/** Question content (text, explanation, one answer) in this device's language, as HTML. */
+function qx(de, en) {
+  const l = lang();
+  if (!en || l === 'de') return esc(de);
+  if (l === 'en' || en === de) return esc(en); // names like "Kathryn Janeway" only once
+  return `${esc(de)}<span class="tr" lang="en">${esc(en)}</span>`;
+}
+const themeOf = Q => (lang() === 'de' ? Q.theme : lang() === 'en' ? Q.themeEn || Q.theme : Q.theme + (Q.themeEn && Q.themeEn !== Q.theme ? ' · ' + Q.themeEn : ''));
+function langSwitch() {
+  const opts = [['de', 'DE'], ['en', 'EN'], ...(bothAllowed() ? [['both', 'DE+EN']] : [])];
+  return `<span class="lang-switch" role="group" aria-label="${t('Sprache')}">${opts.map(([k, label]) => `<button type="button" data-lang="${k}" aria-pressed="${lang() === k}">${label}</button>`).join('')}</span>`;
+}
+/** Messages from the game engine arrive in German: show them in English when wanted. */
+const msg = m => t(String(m || ''));
+// The default prize is stored in German, so every phone can show it in its own language.
+const prizeIn = v => (v.trim() === t(DEFAULT_PRIZE) ? DEFAULT_PRIZE : v);
 
 // ---------- network ----------
 let NET = null; // transport from net.mjs: server (Netlify), local (this browser hosts) or peer (team device)
@@ -77,7 +100,7 @@ async function poll() {
   } catch (e) {
     S.online = false;
     if (e.status === 404) { S.error = e.message; S.pollError = true; S.data = null; }
-    else if (NET.kind === 'peer' && NET.hostMissing() && !S.data) { S.pollError = true; S.error = `Unter dem Code ${ROOM} antwortet gerade keine Spielleitung. Bitte den Code prüfen – und das Quiz muss auf dem Gerät der Spielleitung geöffnet sein. Wir versuchen es weiter …`; }
+    else if (NET.kind === 'peer' && NET.hostMissing() && !S.data) { S.pollError = true; S.error = t('Unter dem Code {code} antwortet gerade keine Spielleitung. Bitte den Code prüfen – und das Quiz muss auf dem Gerät der Spielleitung geöffnet sein. Wir versuchen es weiter …', { code: ROOM }); }
   } finally { polling = false; render(); }
 }
 async function loadAvatars() {
@@ -107,7 +130,7 @@ const joinUrl = () => `${BASE}?room=${ROOM}`;
 const hostUrl = () => `${BASE}?room=${ROOM}#host=${S.hostToken}`;
 async function copy(text, okMsg) {
   try { await navigator.clipboard.writeText(text); toast(okMsg); }
-  catch { window.prompt('Bitte kopieren:', text); }
+  catch { window.prompt(t('Bitte kopieren:'), text); }
 }
 let toastTimer;
 function toast(msg) { S.toast = msg; render(true); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; render(true); }, 2600); }
@@ -128,27 +151,27 @@ function ranked(teams) { // shared places for equal scores
 }
 function winners(teams) { return teams.length && teams[0].score > 0 ? teams.filter(t => t.score === teams[0].score) : []; }
 function csv() {
-  const d = S.data, rows = [['Platz', 'Team', 'Punkte']].concat(ranked(d.teams).map(t => [t.place, t.name, t.score]));
+  const d = S.data, rows = [[t('Platz'), 'Team', t('Punkte')]].concat(ranked(d.teams).map(x => [x.place, x.name, x.score]));
   const text = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
-  download(`Vulkan-Spirit-Quiz-${ROOM}-Ergebnis.csv`, new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
+  download(`Vulkan-Spirit-Quiz-${ROOM}-${t('Ergebnis')}.csv`, new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
 }
 function diploma(team) {
   const d = S.data, w = window.open('', '_blank');
-  if (!w) { toast('Bitte Pop-ups für das Diplom erlauben.'); return; }
-  const date = new Date().toLocaleDateString('de-AT', { day: 'numeric', month: 'long', year: 'numeric' });
-  w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Siegerdiplom – ${esc(team.name)}</title>
+  if (!w) { toast(t('Bitte Pop-ups für das Diplom erlauben.')); return; }
+  const date = new Date().toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  w.document.write(`<!doctype html><html lang="${uiEn() ? 'en' : 'de'}"><head><meta charset="utf-8"><title>${t('Siegerdiplom')} – ${esc(team.name)}</title>
 <style>@font-face{font-family:Antonio;src:url(${BASE}fonts/antonio.woff2)}@page{size:A4 landscape;margin:0}
 body{margin:0;font-family:Georgia,serif;background:#fff;color:#1b1b2b}.d{box-sizing:border-box;width:297mm;height:210mm;padding:18mm;border:6mm solid #c9a227;outline:2mm solid #1b2a4a;outline-offset:-10mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 h1{font-family:Antonio,'Arial Narrow',sans-serif;letter-spacing:.14em;font-size:42pt;margin:4mm 0 2mm;color:#1b2a4a}.t{font-size:34pt;font-weight:bold;margin:6mm 0;color:#8a5a00}.s{font-size:15pt;line-height:1.6}img{height:40mm}
 .f{margin-top:10mm;font-size:11pt;color:#555}</style></head><body><div class="d"><img src="${BASE}logo.png" alt="">
-<h1>SIEGERDIPLOM</h1><div class="s">Das Team</div><div class="t">${esc(team.name)}</div>
-<div class="s">gewinnt die Mission <b>${esc(d.mission)}</b> des Vulkan Spirit Quiz<br>mit <b>${fmt(team.score)} Punkten</b>.<br>Preis: <b>${esc(d.prize)}</b></div>
+<h1>${t('SIEGERDIPLOM')}</h1><div class="s">${t('Das Team')}</div><div class="t">${esc(team.name)}</div>
+<div class="s">${t('gewinnt die Mission <b>{m}</b> des Vulkan Spirit Quiz<br>mit <b>{s} Punkten</b>.<br>Preis: <b>{p}</b>', { m: esc(d.mission), s: fmt(team.score), p: esc(msg(d.prize)) })}</div>
 <div class="f">${date} · Live long and quiz. 🖖</div></div><script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`);
   w.document.close();
 }
 async function onUpload(file) {
   if (!file) return;
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10 * 1024 * 1024) { S.error = 'Bitte JPG, PNG oder WebP mit maximal 10 MB wählen.'; render(true); return; }
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10 * 1024 * 1024) { S.error = t('Bitte JPG, PNG oder WebP mit maximal 10 MB wählen.'); render(true); return; }
   const url = URL.createObjectURL(file);
   try {
     const img = new Image(); img.src = url; await img.decode();
@@ -160,7 +183,7 @@ async function onUpload(file) {
     while (data.length > 32000 && q > .3) { q -= .1; data = c.toDataURL('image/jpeg', q); }
     if (data.length > 32000) throw new Error();
     S.join.upload = data; S.join.avatar = 'upload'; S.error = '';
-  } catch { S.error = 'Das Bild konnte nicht gelesen werden. Bitte ein anderes wählen.'; }
+  } catch { S.error = t('Das Bild konnte nicht gelesen werden. Bitte ein anderes wählen.'); }
   finally { URL.revokeObjectURL(url); render(true); }
 }
 const GOOD = ['Spock hebt eine Augenbraue. Mehr Lob geht kaum.', 'Euer Wissen hat gerade Warp 9 erreicht.', 'Data rechnet nach: ziemlich brillant.', 'Scotty: Für diese Antwort ist genug Energie da.', 'Make it so – und ihr habt es so gemacht.'];
@@ -169,18 +192,18 @@ const BAD = ['Picard braucht kurz einen Moment. Dann geht’s weiter.', 'Die Ant
 // ---------- view parts ----------
 // LCARS frame: header with elbow + logo, and a side column with live status blocks (hidden on phones)
 function header(extra = '') {
-  const offline = ROOM && S.data && !S.online ? '<span class="pill warn">Verbinde …</span>' : '';
-  return `<header class="lc-head"><div class="lc-elbow"><a class="lc-logo" href="./" aria-label="Startseite"><img src="logo.webp" alt="Vulkan Spirit" width="74" height="67"></a></div>
-   <div class="lc-headbody"><div class="lc-titlerow">${extra}${offline}<a class="lc-title" href="./">Vulkan Spirit Quiz</a></div>
+  const offline = ROOM && S.data && !S.online ? `<span class="pill warn">${t('Verbinde …')}</span>` : '';
+  return `<header class="lc-head"><div class="lc-elbow"><a class="lc-logo" href="./" aria-label="${t('Startseite')}"><img src="logo.webp" alt="Vulkan Spirit" width="74" height="67"></a></div>
+   <div class="lc-headbody"><div class="lc-titlerow">${extra}${offline}${langSwitch()}<a class="lc-title" href="./">Vulkan Spirit Quiz</a></div>
    <div class="lc-bar" aria-hidden="true"><i>${stardate()}</i><i></i><i>VS-1701</i><i></i><i></i></div></div></header>${side()}`;
 }
 // Decorative stardate: 1000 units per year (changes every ~50 minutes, so it doesn't force re-renders)
 function stardate() { const d = new Date(), y0 = Date.UTC(d.getUTCFullYear(), 0, 1); return 'SD ' + ((d.getUTCFullYear() - 2000) * 1000 + (Date.now() - y0) / 31557600).toFixed(1); }
 function side() { // in a game: live status; on the start page: plain colour blocks
   const d = S.data;
-  const phase = !d ? '' : d.phase === 'lobby' ? 'Wartet auf Start' : d.phase === 'question' ? `Frage ${d.q + 1}/${d.total}` : d.phase === 'reveal' ? 'Auflösung' : 'Endstand';
+  const phase = !d ? '' : d.phase === 'lobby' ? t('Wartet auf Start') : d.phase === 'question' ? t('Frage {n}/{total}', { n: d.q + 1, total: d.total }) : d.phase === 'reveal' ? t('Auflösung') : t('Endstand');
   const blocks = d
-    ? [['c2', 'Code ' + d.code], ['c4', d.mission], ['c3', `${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'}`], ['c5', phase]]
+    ? [['c2', t('Code {code}', { code: d.code })], ['c4', d.mission], ['c3', `${d.teams.length} ${tn(d.teams.length, 'Team', 'Teams')}`], ['c5', phase]]
     : [['c2', ''], ['c4', ''], ['c3', ''], ['c5', '']];
   const nums = ['02-4719', '47-0815', '03-1966', '74-6560'];
   return `<aside class="lc-side" aria-hidden="true"><div class="lc-elbow2"></div>${blocks.map(([c, t], i) => `<div class="lc-block ${c}" data-n="${nums[i]}">${esc(t)}</div>`).join('')}<div class="lc-block c1 grow"></div></aside>`;
@@ -189,16 +212,16 @@ function missionCard(i, selected, name = 'pack') {
   const m = MISSIONS[i];
   return `<label class="mission ${selected ? 'sel' : ''}"><input type="radio" name="${name}" value="${i}" ${selected ? 'checked' : ''}>
   <img src="${m.image}" alt="" loading="lazy"><span class="mname">${esc(m.name)}</span>
-  <span class="minfo">${m.finale ? '5 Bonusfragen · inkl. Musikfrage' : '9 Fragen + 1 Knackfrage mit 2,5×'}</span></label>`;
+  <span class="minfo">${m.finale ? t('5 Bonusfragen · inkl. Musikfrage') : t('9 Fragen + 1 Knackfrage mit 2,5×')}</span></label>`;
 }
 function timerHtml(d) {
   return `<div class="timer" data-timer><span data-sec>${Math.round((d.deadline - d.started) / 1000)}</span><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/><circle data-ring cx="20" cy="20" r="17"/></svg></div>`;
 }
 function questionHead(d) {
   const Q = d.question, col = THEME_COLORS[Q.theme] || ['#9fd', '#a8f'];
-  return `<div class="qhead" style="--c1:${col[0]};--c2:${col[1]}"><span class="theme">${esc(Q.theme)}</span>
-   <span class="qnum">Frage ${d.q + 1} von ${d.total}</span>${Q.hard ? '<span class="hard">KNACKFRAGE · 2,5× PUNKTE</span>' : ''}
-   ${Q.audio ? `<span class="hard music-tag">♫ MUSIKFRAGE · ${Q.seconds || QUESTION_SECONDS} SEKUNDEN</span>` : ''}</div>${musicControls(d)}`;
+  return `<div class="qhead" style="--c1:${col[0]};--c2:${col[1]}"><span class="theme">${esc(themeOf(Q))}</span>
+   <span class="qnum">${t('Frage {n} von {total}', { n: d.q + 1, total: d.total })}</span>${Q.hard ? `<span class="hard">${t('KNACKFRAGE · 2,5× PUNKTE')}</span>` : ''}
+   ${Q.audio ? `<span class="hard music-tag">${t('♫ MUSIKFRAGE · {s} SEKUNDEN', { s: Q.seconds || QUESTION_SECONDS })}</span>` : ''}</div>${musicControls(d)}`;
 }
 
 // ---------- music question ----------
@@ -223,9 +246,9 @@ function syncMusic() {
 function musicControls(d) {
   if (!musicHere(d)) return '';
   const playing = music.el && !music.el.paused;
-  const label = playing ? '⏸ Musik pausieren' : music.el?.ended ? '↺ Musik nochmal' : '▶ Musik abspielen';
+  const label = t(playing ? '⏸ Musik pausieren' : music.el?.ended ? '↺ Musik nochmal' : '▶ Musik abspielen');
   return `<div class="row music-bar"><button class="btn${playing ? '' : ' primary'}" data-act="music">${label}</button>
-    ${music.blocked && !playing ? '<span class="muted small">Der Browser hat die Musik angehalten – bitte einmal tippen.</span>' : ''}</div>`;
+    ${music.blocked && !playing ? `<span class="muted small">${t('Der Browser hat die Musik angehalten – bitte einmal tippen.')}</span>` : ''}</div>`;
 }
 function toggleMusic() {
   if (!music.el) return;
@@ -236,7 +259,7 @@ function toggleMusic() {
 }
 function progress(d) {
   const p = Math.max(0, d.q + (d.phase === 'reveal' ? 1 : 0)) / d.total * 100;
-  return `<div class="progress" aria-label="Missionsfortschritt"><span style="width:${p}%"></span></div>`;
+  return `<div class="progress" aria-label="${t('Missionsfortschritt')}"><span style="width:${p}%"></span></div>`;
 }
 function optionsHtml(d, interactive) {
   const Q = d.question, reveal = d.phase === 'reveal', mine = d.answer?.choice;
@@ -245,57 +268,59 @@ function optionsHtml(d, interactive) {
     if (reveal && i === Q.correct) cls.push('right'); else if (reveal) cls.push('dim');
     if (mine === i) cls.push('mine');
     if (reveal && mine === i && i !== Q.correct) cls.push('wrong');
-    const stat = reveal && d.stats && !d.solo ? `<span class="stat">${d.stats[i]} ${d.stats[i] === 1 ? 'Team' : 'Teams'}</span>` : '';
+    const stat = reveal && d.stats && !d.solo ? `<span class="stat">${d.stats[i]} ${tn(d.stats[i], 'Team', 'Teams')}</span>` : '';
     const dis = !interactive || mine != null ? 'disabled' : '';
-    return `<button class="${cls.join(' ')}" data-choice="${i}" ${dis}><b>${LETTERS[i]}</b><span>${esc(o)}</span>${stat}</button>`;
+    return `<button class="${cls.join(' ')}" data-choice="${i}" ${dis}><b>${LETTERS[i]}</b><span>${qx(o, Q.en?.options?.[i])}</span>${stat}</button>`;
   }).join('')}</div>`;
 }
-function picture(Q) { return Q.image ? `<button class="qimg" data-zoom><img src="${Q.image}" alt="Fragenbild"><span>🔍</span></button>` : ''; }
+const qtext = Q => `<h2 class="qtext">${qx(Q.text, Q.en?.text)}</h2>`;
+const explain = Q => `<div class="explain"><small>${t('LOGBUCHEINTRAG')}</small><p>${qx(Q.explanation, Q.en?.explanation)}</p></div>`;
+function picture(Q) { return Q.image ? `<button class="qimg" data-zoom><img src="${Q.image}" alt="${t('Fragenbild')}"><span>🔍</span></button>` : ''; }
 function scoreList(d, max = 99, showLast = false) {
   const list = ranked(d.teams).slice(0, max);
-  if (!list.length) return '<p class="muted">Noch keine Teams.</p>';
+  if (!list.length) return `<p class="muted">${t('Noch keine Teams.')}</p>`;
   return `<ol class="scores">${list.map(t => `<li class="${d.me?.id === t.id ? 'me' : ''}"><span class="place">${t.place}</span>${avatarHtml(t.avatar, t.id, 's')}<span class="tname">${esc(t.name)}</span>
    ${showLast && t.last != null ? `<span class="last ${t.last > 0 ? 'plus' : ''}">${t.last > 0 ? '+' + fmt(t.last) : '±0'}</span>` : ''}<span class="pts">${fmt(t.score)}</span></li>`).join('')}</ol>`;
 }
 function countdownBlock(d) {
   const pre = now() < d.started;
-  return pre ? `<div class="getready"><span>Achtung, Brücke …</span><b data-pre>3</b></div>` : '';
+  return pre ? `<div class="getready"><span>${t('Achtung, Brücke …')}</span><b data-pre>3</b></div>` : '';
 }
 
 // HOME ---------------------------------------------------
 function viewHome() {
   const last = store.get('warp-last-host'), H = S.home;
   return `${header()}<main class="home">
-  <section class="hero"><img src="logo.webp" alt="Vulkan Spirit Wappen" width="230" height="207" fetchpriority="high"><div><h1><span>Wissen · die letzte Grenze</span>Vulkan Spirit Quiz</h1>
-    <p>Das Star-Trek-Quiz der Vulkan Spirit Crew für Conventions und Fan-Abende: Crews treten gegeneinander an, sammeln Punkte und holen sich die Belohnung. QR-Code scannen, Teamname eingeben, los geht’s – ohne Anmeldung, ohne App.</p></div></section>
-  <section class="card join-card tv-hide"><h2>An Bord kommen</h2>
-    <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="SPIELCODE" value="${esc(H.code)}" aria-label="Sechsstelliger Spielcode">
-    <button class="btn primary">Beitreten →</button></form>${S.error ? `<p class="err">${esc(S.error)}</p>` : ''}</section>
-  <section class="card"><h2>Brücke übernehmen</h2><p class="muted">Schiff wählen – jede Mission enthält Fragen aus allen zehn Themenbereichen.</p>
+  <section class="hero"><img src="logo.webp" alt="Vulkan Spirit" width="230" height="207" fetchpriority="high"><div><h1><span>${t('Wissen · die letzte Grenze')}</span>Vulkan Spirit Quiz</h1>
+    <p>${t('Das Star-Trek-Quiz der Vulkan Spirit Crew für Conventions und Fan-Abende: Crews treten gegeneinander an, sammeln Punkte und holen sich die Belohnung. QR-Code scannen, Teamname eingeben, los geht’s – ohne Anmeldung, ohne App.')}</p></div></section>
+  <section class="card join-card tv-hide"><h2>${t('An Bord kommen')}</h2>
+    <form data-form="code"><input name="code" data-code inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="${t('SPIELCODE')}" value="${esc(H.code)}" aria-label="${t('Sechsstelliger Spielcode')}">
+    <button class="btn primary">${t('Beitreten →')}</button></form>${S.error ? `<p class="err">${esc(msg(S.error))}</p>` : ''}</section>
+  <section class="card"><h2>${t('Brücke übernehmen')}</h2><p class="muted">${t('Schiff wählen – jede Mission enthält Fragen aus allen zehn Themenbereichen.')}</p>
     <div class="missions" data-group="home-pack">${MISSIONS.map((_, i) => missionCard(i, i === H.pack)).join('')}</div>
-    <label class="field">Belohnung für die Siegercrew<input data-prize maxlength="80" value="${esc(H.prize)}"></label>
-    <button class="btn primary big" data-act="create" ${S.busy ? 'disabled' : ''}>Mission eröffnen →</button>
-    ${last ? `<p><a class="btn ghost" href="./?room=${esc(last)}">Zurück zur Mission ${esc(last)}</a></p>` : ''}</section>
-  <section class="card solo-card"><h2>Holodeck-Training</h2><p class="muted">Gerade keine Crews da? Spiel die oben gewählte Mission allein auf diesem Gerät – mit Countdown, Punkten und Auflösung.</p>
-    <label class="field">Dein Name<input data-soloname maxlength="24" autocomplete="off" placeholder="z. B. Kadett Kirk" value="${esc(H.solo)}"></label>
-    <button class="btn big" data-act="solo" ${S.busy ? 'disabled' : ''}>Training starten →</button></section>
+    <label class="field">${t('Belohnung für die Siegercrew')}<input data-prize maxlength="80" value="${esc(msg(H.prize))}"></label>
+    <button class="btn primary big" data-act="create" ${S.busy ? 'disabled' : ''}>${t('Mission eröffnen →')}</button>
+    ${last ? `<p><a class="btn ghost" href="./?room=${esc(last)}">${t('Zurück zur Mission {code}', { code: esc(last) })}</a></p>` : ''}</section>
+  <section class="card solo-card"><h2>${t('Holodeck-Training')}</h2><p class="muted">${t('Gerade keine Crews da? Spiel die oben gewählte Mission allein auf diesem Gerät – mit Countdown, Punkten und Auflösung.')}</p>
+    <label class="field">${t('Dein Name')}<input data-soloname maxlength="24" autocomplete="off" placeholder="${t('z. B. Kadett Kirk')}" value="${esc(H.solo)}"></label>
+    <button class="btn big" data-act="solo" ${S.busy ? 'disabled' : ''}>${t('Training starten →')}</button></section>
   ${footer()}</main>`;
 }
 function footer() {
-  return `<footer><div class="lc-foot" aria-hidden="true"><i></i><i></i><i></i></div><a href="fragenquellen.html">Fragen &amp; Quellen</a> · <a href="bildquellen.html">Bild- &amp; Schriftquellen</a><br>
-  Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS.</footer>`;
+  return `<footer><div class="lc-foot" aria-hidden="true"><i></i><i></i><i></i></div><a href="fragenquellen.html">${t('Fragen &amp; Quellen')}</a> · <a href="bildquellen.html">${t('Bild- &amp; Schriftquellen')}</a><br>
+  ${t('Inoffizielles Fanprojekt von Vulkan Spirit. Star Trek ist eine Marke von Paramount/CBS.')}</footer>`;
 }
 
 // HOST + SCREEN --------------------------------------------
 function viewLobbyShared(d, host) {
   const qr = qrSvg(joinUrl());
   return `<section class="lobby ${host ? '' : 'screen-lobby'}">
-   <div class="qrbox"><div class="qr">${qr}</div><div class="code"><small>SPIELCODE</small><b>${esc(d.code)}</b></div><div class="url">${esc(joinUrl().replace(/^https?:\/\//, ''))}</div></div>
-   <div class="lobby-side"><div class="mission-banner"><img src="${MISSIONS[d.pack].image}" alt=""><div><small>MISSIONSZIEL</small><b>${esc(d.mission)}</b>
-     <span>${d.total} Fragen · ${QUESTION_SECONDS} Sekunden pro Frage · 500–1.000 Punkte${d.total === 10 ? ' · Frage 10: 2,5×' : ''}</span></div></div>
-    <div class="prize"><small>BELOHNUNG FÜR DIE SIEGERCREW</small><b>🏆 ${esc(d.prize)}</b></div>
-    <h3>${d.teams.length} ${d.teams.length === 1 ? 'Crew' : 'Crews'} an Bord</h3>
-    <ul class="teamgrid">${d.teams.map(t => `<li>${avatarHtml(t.avatar, t.id)}<span>${esc(t.name)}</span>${host ? `<button class="x" data-kick="${esc(t.id)}" title="Team entfernen" aria-label="${esc(t.name)} entfernen">×</button>` : ''}</li>`).join('') || '<li class="muted wait">Warte auf Crews – QR-Code scannen …</li>'}</ul>
+   <div class="qrbox"><div class="qr">${qr}</div><div class="code"><small>${t('SPIELCODE')}</small><b>${esc(d.code)}</b></div><div class="url">${esc(joinUrl().replace(/^https?:\/\//, ''))}</div></div>
+   <div class="lobby-side"><div class="mission-banner"><img src="${MISSIONS[d.pack].image}" alt=""><div><small>${t('MISSIONSZIEL')}</small><b>${esc(d.mission)}</b>
+     <span>${t('{n} Fragen · {s} Sekunden pro Frage · 500–1.000 Punkte', { n: d.total, s: QUESTION_SECONDS })}${d.total === 10 ? t(' · Frage 10: 2,5×') : ''}</span></div></div>
+    <div class="prize"><small>${t('BELOHNUNG FÜR DIE SIEGERCREW')}</small><b>🏆 ${esc(msg(d.prize))}</b></div>
+    <h3>${t('{n} {crews} an Bord', { n: d.teams.length, crews: tn(d.teams.length, 'Crew', 'Crews') })}</h3>
+    <ul class="teamgrid">${d.teams.map(x => `<li>${avatarHtml(x.avatar, x.id)}<span>${esc(x.name)}</span>${host ? `<button class="x" data-kick="${esc(x.id)}" title="${t('Team entfernen')}" aria-label="${t('{name} entfernen', { name: esc(x.name) })}">×</button>` : ''}</li>`).join('') || `<li class="muted wait">${t('Warte auf Crews – QR-Code scannen …')}</li>`}</ul>
    </div></section>`;
 }
 function viewHost() {
@@ -304,54 +329,55 @@ function viewHost() {
   if (d.phase === 'lobby') {
     body = `${viewLobbyShared(d, true)}
     <section class="card controls"><div class="row">
-      <button class="btn tv-hide" data-copy="team">Link für Teams kopieren</button><button class="btn tv-hide" data-act="saveqr">QR-Code speichern ↓</button>
-      <a class="btn tv-hide" href="./?room=${esc(d.code)}&screen=1" target="_blank" rel="noopener">Bildschirm öffnen ↗</a><button class="btn tv-hide" data-copy="host">Leitungslink sichern</button></div>
-      <details class="settings" data-settings ${S.settingsOpen ? 'open' : ''}><summary>Mission oder Preis ändern</summary>
+      <button class="btn tv-hide" data-copy="team">${t('Link für Teams kopieren')}</button><button class="btn tv-hide" data-act="saveqr">${t('QR-Code speichern ↓')}</button>
+      <a class="btn tv-hide" href="./?room=${esc(d.code)}&screen=1" target="_blank" rel="noopener">${t('Bildschirm öffnen ↗')}</a><button class="btn tv-hide" data-copy="host">${t('Leitungslink sichern')}</button></div>
+      <details class="settings" data-settings ${S.settingsOpen ? 'open' : ''}><summary>${t('Mission oder Preis ändern')}</summary>
         <div class="missions small" data-group="lobby-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.lobbyPack ?? d.pack), 'lpack')).join('')}</div>
-        <label class="field">Preis<input data-lobbyprize maxlength="80" value="${esc(S.lobbyPrize ?? d.prize)}"></label>
-        <button class="btn" data-act="settings">Übernehmen</button></details>
-      <button class="btn primary big" data-act="start" ${d.teams.length && !S.busy ? '' : 'disabled'}>Mission beginnen →</button>
-      ${d.teams.length ? '' : '<p class="muted">Sobald die erste Crew an Bord ist, kann es losgehen.</p>'}${hostHint()}
-      <p class="muted small tv-hide">Tipp: Leertaste oder Enter = Weiter / Auflösen.</p><p class="muted small tv-only">Fernbedienung: Pfeiltasten zum Auswählen, OK zum Bestätigen. Die Teams scannen den QR-Code mit dem Handy.</p></section>`;
+        <label class="field">${t('Preis')}<input data-lobbyprize maxlength="80" value="${esc(msg(S.lobbyPrize ?? d.prize))}"></label>
+        <button class="btn" data-act="settings">${t('Übernehmen')}</button></details>
+      <button class="btn primary big" data-act="start" ${d.teams.length && !S.busy ? '' : 'disabled'}>${t('Mission beginnen →')}</button>
+      ${d.teams.length ? '' : `<p class="muted">${t('Sobald die erste Crew an Bord ist, kann es losgehen.')}</p>`}${hostHint()}
+      <p class="muted small tv-hide">${t('Tipp: Leertaste oder Enter = Weiter / Auflösen.')}</p><p class="muted small tv-only">${t('Fernbedienung: Pfeiltasten zum Auswählen, OK zum Bestätigen. Die Teams scannen den QR-Code mit dem Handy.')}</p></section>`;
   } else if (d.phase === 'question' || d.phase === 'reveal') {
     const Q = d.question, reveal = d.phase === 'reveal', last = d.q + 1 >= d.total;
     body = `<section class="stage">${progress(d)}${questionHead(d)}
-      ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${d.answeredCount} von ${d.teams.length} Teams haben geantwortet.</span></div>${countdownBlock(d)}`}
-      <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-      ${reveal ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div>` : ''}
-      <div class="row hostbar">${reveal ? `<button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${last ? 'Endstand zeigen →' : 'Nächste Frage →'}</button>` : `<button class="btn primary" data-act="reveal" ${S.busy ? 'disabled' : ''}>Lösung zeigen</button>`}
-        <button class="btn ghost small" data-act="end">${S.confirmEnd ? 'Wirklich beenden?' : 'Quiz beenden'}</button></div></section>
-      ${reveal ? `<section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 99, true)}</section>` : ''}`;
+      ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${answeredLine(d)}</span></div>${countdownBlock(d)}`}
+      ${qtext(Q)}${picture(Q)}${optionsHtml(d, false)}
+      ${reveal ? explain(Q) : ''}
+      <div class="row hostbar">${reveal ? `<button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${t(last ? 'Endstand zeigen →' : 'Nächste Frage →')}</button>` : `<button class="btn primary" data-act="reveal" ${S.busy ? 'disabled' : ''}>${t('Lösung zeigen')}</button>`}
+        <button class="btn ghost small" data-act="end">${t(S.confirmEnd ? 'Wirklich beenden?' : 'Quiz beenden')}</button></div></section>
+      ${reveal ? `<section class="card"><h3>${t('RANGLISTE · LIVE')}</h3>${scoreList(d, 99, true)}</section>` : ''}`;
   } else body = viewFinished(d, 'host');
-  return `${header(`<span class="pill">Spielleitung · ${esc(d.code)}</span>${relayPill()}`)}<main class="host">${err()}${body}</main>`;
+  return `${header(`<span class="pill">${t('Spielleitung · {code}', { code: esc(d.code) })}</span>${relayPill()}`)}<main class="host">${err()}${body}</main>`;
 }
+const answeredLine = d => t('{a} von {b} Teams haben geantwortet.', { a: d.answeredCount, b: d.teams.length });
 // On GitHub Pages the game runs in the host's browser; teams connect to it directly.
 function relayPill() {
   if (NET?.kind !== 'local') return '';
   const st = NET.status(), n = NET.teamsOnline();
-  if (st === 'ok') return `<span class="pill ok" title="Geräte, die gerade mit diesem Browser verbunden sind">📡 ${n} ${n === 1 ? 'Gerät' : 'Geräte'} verbunden</span>`;
-  return `<span class="pill warn">📡 ${st === 'error' ? 'Funkmodul fehlt – Internet prüfen' : 'Funkkanal wird geöffnet …'}</span>`;
+  if (st === 'ok') return `<span class="pill ok" title="${t('Geräte, die gerade mit diesem Browser verbunden sind')}">${t('📡 {n} {devices} verbunden', { n, devices: tn(n, 'Gerät', 'Geräte') })}</span>`;
+  return `<span class="pill warn">📡 ${t(st === 'error' ? 'Funkmodul fehlt – Internet prüfen' : 'Funkkanal wird geöffnet …')}</span>`;
 }
 function hostHint() {
-  return NET?.kind === 'local' ? '<p class="notice small">📡 Das Quiz läuft in <b>diesem Browserfenster</b>. Bitte geöffnet lassen, bis das Spiel vorbei ist – die Teams sind direkt mit diesem Gerät verbunden. Neu laden ist kein Problem, der Spielstand bleibt erhalten.</p>' : '';
+  return NET?.kind === 'local' ? `<p class="notice small">${t('📡 Das Quiz läuft in <b>diesem Browserfenster</b>. Bitte geöffnet lassen, bis das Spiel vorbei ist – die Teams sind direkt mit diesem Gerät verbunden. Neu laden ist kein Problem, der Spielstand bleibt erhalten.')}</p>` : '';
 }
 function viewScreen() {
   const d = S.data;
   let body;
-  if (d.phase === 'lobby') body = `<h1 class="screen-title">JETZT AN BORD KOMMEN</h1>${viewLobbyShared(d, false)}`;
+  if (d.phase === 'lobby') body = `<h1 class="screen-title">${t('JETZT AN BORD KOMMEN')}</h1>${viewLobbyShared(d, false)}`;
   else if (d.phase === 'question' || d.phase === 'reveal') {
     const Q = d.question, reveal = d.phase === 'reveal';
     if (!Q.text) body = `<section class="stage">${progress(d)}${questionHead(d)}${countdownBlock(d)}</section>`;
     else body = `<section class="stage big">${progress(d)}${questionHead(d)}
-      ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${d.answeredCount} von ${d.teams.length} Teams haben geantwortet.</span></div>${countdownBlock(d)}`}
-      <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-      ${reveal ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div><section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 8, true)}</section>` : ''}</section>`;
+      ${reveal ? '' : `<div class="statusline">${timerHtml(d)}<span>${answeredLine(d)}</span></div>${countdownBlock(d)}`}
+      ${qtext(Q)}${picture(Q)}${optionsHtml(d, false)}
+      ${reveal ? `${explain(Q)}<section class="card"><h3>${t('RANGLISTE · LIVE')}</h3>${scoreList(d, 8, true)}</section>` : ''}</section>`;
   } else body = viewFinished(d, 'screen');
-  return `${header(`<span class="pill">Beamer · ${esc(d.code)}</span>`)}<main class="screen">${body}</main>`;
+  return `${header(`<span class="pill">${t('Beamer · {code}', { code: esc(d.code) })}</span>`)}<main class="screen">${body}</main>`;
 }
 // short looping clip instead of a large GIF (about 30 KB instead of 750 KB)
 function reaction(won) {
-  const f = won ? 'win' : 'lose', alt = won ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion';
+  const f = won ? 'win' : 'lose', alt = t(won ? 'Picard applaudiert' : 'Picard mit einer Facepalm-Reaktion');
   return `<video class="gif" src="media/${f}.mp4" poster="media/${f}.jpg" autoplay muted loop playsinline aria-label="${alt}"></video>`;
 }
 function viewFinished(d, who) {
@@ -363,73 +389,73 @@ function viewFinished(d, who) {
     const rank = share >= .75 ? ['Captain-Niveau', 'Picard wäre stolz.'] : share >= .5 ? ['Erster Offizier', 'Nummer Eins – fast ganz oben.'] : share >= .25 ? ['Fähnrich', 'Solide. Die Akademie ruft trotzdem.'] : me.score > 0 ? ['Kadett', 'Jeder Captain hat mal so angefangen.'] : ['Rotes Hemd', 'Landurlaub abgesagt. Nächster Versuch?'];
     const pick = S.restartPack ?? Math.min(d.pack + 1, MISSIONS.length - 1);
     return `<section class="result ${share >= .5 ? 'won' : ''}">${reaction(share >= .5)}
-      <small>MISSION ${esc(d.mission)} ABGESCHLOSSEN</small><h2>${rank[0].toUpperCase()}</h2>
-      <p class="big">${fmt(me.score)} von ${fmt(max)} möglichen Punkten</p><p class="muted">${rank[1]}</p>
-      ${me.score > 0 ? `<button class="btn tv-hide" data-diploma="${esc(me.id)}">Diplom herunterladen ↓</button>` : ''}</section>
-      <section class="card"><h3>Nächste Mission</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === pick, 'rpack')).join('')}</div>
-      <button class="btn primary big" data-act="restart">Mission starten →</button></section>`;
+      <small>${t('MISSION {m} ABGESCHLOSSEN', { m: esc(d.mission) })}</small><h2>${t(rank[0]).toUpperCase()}</h2>
+      <p class="big">${t('{a} von {b} möglichen Punkten', { a: fmt(me.score), b: fmt(max) })}</p><p class="muted">${t(rank[1])}</p>
+      ${me.score > 0 ? `<button class="btn tv-hide" data-diploma="${esc(me.id)}">${t('Diplom herunterladen ↓')}</button>` : ''}</section>
+      <section class="card"><h3>${t('Nächste Mission')}</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === pick, 'rpack')).join('')}</div>
+      <button class="btn primary big" data-act="restart">${t('Mission starten →')}</button></section>`;
   }
   if (who === 'team' && me) {
     top = `<section class="result ${iWon ? 'won' : ''}">${reaction(iWon)}
-      <h2>${iWon ? 'SIEG AUF DER BRÜCKE' : 'HELDEN DER NÄCHSTEN RUNDE'}</h2>
-      <p class="big">Platz ${me.place} · ${fmt(me.score)} Punkte</p>${iWon ? `<p>Preis: <b>${esc(d.prize)}</b></p><button class="btn primary tv-hide" data-diploma="${esc(me.id)}">Siegerdiplom herunterladen ↓</button>` : '<p class="muted">Heute kein Pokal. Dafür eine hervorragende Origin-Story.</p>'}</section>`;
+      <h2>${t(iWon ? 'SIEG AUF DER BRÜCKE' : 'HELDEN DER NÄCHSTEN RUNDE')}</h2>
+      <p class="big">${t('Platz {p} · {s} Punkte', { p: me.place, s: fmt(me.score) })}</p>${iWon ? `<p>${t('Preis: <b>{p}</b>', { p: esc(msg(d.prize)) })}</p><button class="btn primary tv-hide" data-diploma="${esc(me.id)}">${t('Siegerdiplom herunterladen ↓')}</button>` : `<p class="muted">${t('Heute kein Pokal. Dafür eine hervorragende Origin-Story.')}</p>`}</section>`;
   } else {
-    top = `<section class="result won"><small>SIEGERTEAM${win.length > 1 ? 'S' : ''}</small>
-      ${win.length ? win.map(w => `<div class="winner">${avatarHtml(w.avatar, w.id, 'l')}<h2>${esc(w.name)}</h2></div>`).join('') : '<h2>Kein Siegerteam – alle Antworten sind im Transporterpuffer verschwunden.</h2>'}
-      ${win.length ? `<p class="big">${fmt(win[0].score)} Punkte · 🏆 ${esc(d.prize)}</p>` : ''}
+    top = `<section class="result won"><small>${t(win.length > 1 ? 'SIEGERTEAMS' : 'SIEGERTEAM')}</small>
+      ${win.length ? win.map(w => `<div class="winner">${avatarHtml(w.avatar, w.id, 'l')}<h2>${esc(w.name)}</h2></div>`).join('') : `<h2>${t('Kein Siegerteam – alle Antworten sind im Transporterpuffer verschwunden.')}</h2>`}
+      ${win.length ? `<p class="big">${t('{s} Punkte · 🏆 {p}', { s: fmt(win[0].score), p: esc(msg(d.prize)) })}</p>` : ''}
       ${who === 'screen' ? reaction(true) : ''}</section>`;
   }
-  const hostTools = who === 'host' ? `<section class="card"><div class="row">${win.map(w => `<button class="btn primary tv-hide" data-diploma="${esc(w.id)}">Diplom für ${esc(w.name)} ↓</button>`).join('')}
-     <button class="btn tv-hide" data-act="csv">Ergebnis als CSV speichern ↓</button></div>
-     <h3>Nächste Mission – gleiche Teams</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.restartPack ?? Math.min(d.pack + 1, MISSIONS.length - 1)), 'rpack')).join('')}</div>
-     <button class="btn primary big" data-act="restart">Neue Mission starten →</button></section>` : '';
-  return `${top}<section class="card"><h3>ENDSTAND · ${esc(d.mission)}</h3>${scoreList(d)}</section>${hostTools}`;
+  const hostTools = who === 'host' ? `<section class="card"><div class="row">${win.map(w => `<button class="btn primary tv-hide" data-diploma="${esc(w.id)}">${t('Diplom für {name} ↓', { name: esc(w.name) })}</button>`).join('')}
+     <button class="btn tv-hide" data-act="csv">${t('Ergebnis als CSV speichern ↓')}</button></div>
+     <h3>${t('Nächste Mission – gleiche Teams')}</h3><div class="missions small" data-group="restart-pack">${MISSIONS.map((_, i) => missionCard(i, i === (S.restartPack ?? Math.min(d.pack + 1, MISSIONS.length - 1)), 'rpack')).join('')}</div>
+     <button class="btn primary big" data-act="restart">${t('Neue Mission starten →')}</button></section>` : '';
+  return `${top}<section class="card"><h3>${t('ENDSTAND · {m}', { m: esc(d.mission) })}</h3>${scoreList(d)}</section>${hostTools}`;
 }
 
 // TEAM ----------------------------------------------------
 function viewJoin(d) {
-  const J = S.join, groups = AVATAR_GROUPS.map(([id, label]) => `<button type="button" class="tab ${J.group === id ? 'on' : ''}" data-group-tab="${id}">${label}</button>`).join('');
-  const list = AVATARS.filter(a => a.group === J.group).map(a => `<button type="button" class="pick ${J.avatar === a.id ? 'on' : ''}" data-avatar="${a.id}" title="${esc(a.tag || a.name)}">${avatarHtml(a.id, '', 'm')}<span>${esc(a.name)}</span></button>`).join('');
-  return `<section class="card joinform"><small class="kicker">AN BORD KOMMEN · ${esc(d.code)}</small>
-   <h2>${esc(d.mission)}</h2><p class="muted">🏆 ${esc(d.prize)} · ${d.teams.length} ${d.teams.length === 1 ? 'Crew' : 'Crews'} an Bord</p>
-   ${S.kicked ? '<p class="err">Euer Team wurde von der Spielleitung entfernt. Ihr könnt mit einem neuen Namen beitreten.</p>' : ''}
-   <label class="field">Teamname<input data-teamname maxlength="24" autocomplete="off" placeholder="z. B. Die Tribble-Bande" value="${esc(J.name)}"></label>
-   <div class="field">Teambild<div class="tabs">${groups}<button type="button" class="tab ${J.group === 'upload' ? 'on' : ''}" data-group-tab="upload">Eigenes Bild</button></div>
+  const J = S.join, groups = AVATAR_GROUPS.map(([id, label]) => `<button type="button" class="tab ${J.group === id ? 'on' : ''}" data-group-tab="${id}">${t(label)}</button>`).join('');
+  const list = AVATARS.filter(a => a.group === J.group).map(a => `<button type="button" class="pick ${J.avatar === a.id ? 'on' : ''}" data-avatar="${a.id}" title="${esc(t(a.tag || a.name))}">${avatarHtml(a.id, '', 'm')}<span>${esc(t(a.name))}</span></button>`).join('');
+  return `<section class="card joinform"><small class="kicker">${t('AN BORD KOMMEN · {code}', { code: esc(d.code) })}</small>
+   <h2>${esc(d.mission)}</h2><p class="muted">${t('🏆 {p} · {n} {crews} an Bord', { p: esc(msg(d.prize)), n: d.teams.length, crews: tn(d.teams.length, 'Crew', 'Crews') })}</p>
+   ${S.kicked ? `<p class="err">${t('Euer Team wurde von der Spielleitung entfernt. Ihr könnt mit einem neuen Namen beitreten.')}</p>` : ''}
+   <label class="field">${t('Teamname')}<input data-teamname maxlength="24" autocomplete="off" placeholder="${t('z. B. Die Tribble-Bande')}" value="${esc(J.name)}"></label>
+   <div class="field">${t('Teambild')}<div class="tabs">${groups}<button type="button" class="tab ${J.group === 'upload' ? 'on' : ''}" data-group-tab="upload">${t('Eigenes Bild')}</button></div>
    ${J.group === 'upload' ? `<div class="upload">${J.upload ? `<span class="av av-l"><img src="${J.upload}" alt=""></span>` : ''}
-     <label class="btn">Eigenes Teambild hochladen<input type="file" accept="image/jpeg,image/png,image/webp" data-upload hidden></label>
-     <p class="muted small">JPG, PNG oder WebP · maximal 10 MB. Das Bild wird verkleinert und für alle Teams sichtbar.</p></div>` : `<div class="picks">${list}</div>`}</div>
-   <button class="btn primary big" data-act="join" ${S.busy ? 'disabled' : ''}>Crew anmelden →</button>${err()}</section>`;
+     <label class="btn">${t('Eigenes Teambild hochladen')}<input type="file" accept="image/jpeg,image/png,image/webp" data-upload hidden></label>
+     <p class="muted small">${t('JPG, PNG oder WebP · maximal 10 MB. Das Bild wird verkleinert und für alle Teams sichtbar.')}</p></div>` : `<div class="picks">${list}</div>`}</div>
+   <button class="btn primary big" data-act="join" ${S.busy ? 'disabled' : ''}>${t('Crew anmelden →')}</button>${err()}</section>`;
 }
 function viewTeam() {
   const d = S.data;
   if (!d.me) {
     if (d.phase === 'lobby') return `${header()}<main class="team">${viewJoin(d)}</main>`;
-    return `${header()}<main class="team"><p class="notice">Diese Runde läuft bereits. Ihr könnt zuschauen und bei der nächsten Runde als Team beitreten.</p>${viewSpectator(d)}</main>`;
+    return `${header()}<main class="team"><p class="notice">${t('Diese Runde läuft bereits. Ihr könnt zuschauen und bei der nächsten Runde als Team beitreten.')}</p>${viewSpectator(d)}</main>`;
   }
   let body;
   if (d.phase === 'lobby') {
-    body = `<section class="card center"><small class="kicker">CREW AN BORD</small>${avatarHtml(d.me.avatar, d.me.id, 'l')}<h2>${esc(d.me.name)}</h2>
-     <p>Mission <b>${esc(d.mission)}</b> · ${d.total} Fragen · ${QUESTION_SECONDS} Sekunden pro Frage</p><p class="muted">🏆 ${esc(d.prize)}</p>
-     <p class="pulse">Warten auf den Befehl der Brücke …</p><p class="muted">${d.teams.length} ${d.teams.length === 1 ? 'Team' : 'Teams'} dabei</p></section>`;
+    body = `<section class="card center"><small class="kicker">${t('CREW AN BORD')}</small>${avatarHtml(d.me.avatar, d.me.id, 'l')}<h2>${esc(d.me.name)}</h2>
+     <p>${t('Mission <b>{m}</b> · {n} Fragen · {s} Sekunden pro Frage', { m: esc(d.mission), n: d.total, s: QUESTION_SECONDS })}</p><p class="muted">🏆 ${esc(msg(d.prize))}</p>
+     <p class="pulse">${t('Warten auf den Befehl der Brücke …')}</p><p class="muted">${t('{n} {teams} dabei', { n: d.teams.length, teams: tn(d.teams.length, 'Team', 'Teams') })}</p></section>`;
   } else if (d.phase === 'question') {
     const Q = d.question;
     if (!Q.text) body = `<section class="stage">${progress(d)}${questionHead(d)}${countdownBlock(d)}</section>`;
     else {
       const answered = d.answer != null, over = now() >= d.deadline;
-      const msg = answered ? '✓ Antwort gespeichert. Gemeinsam auf die Auflösung warten.' : over ? 'Zeit abgelaufen. Die Lösung kommt gleich.' : d.solo ? 'Die erste Antwort zählt – je schneller, desto mehr Punkte.' : 'Kurz beraten – nur die erste Antwort zählt.';
-      body = `<section class="stage">${progress(d)}${questionHead(d)}<div class="statusline">${timerHtml(d)}<span>${esc(msg)}</span></div>
-       <h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, !answered && !over)}</section>`;
+      const line = t(answered ? '✓ Antwort gespeichert. Gemeinsam auf die Auflösung warten.' : over ? 'Zeit abgelaufen. Die Lösung kommt gleich.' : d.solo ? 'Die erste Antwort zählt – je schneller, desto mehr Punkte.' : 'Kurz beraten – nur die erste Antwort zählt.');
+      body = `<section class="stage">${progress(d)}${questionHead(d)}<div class="statusline">${timerHtml(d)}<span>${esc(line)}</span></div>
+       ${qtext(Q)}${picture(Q)}${optionsHtml(d, !answered && !over)}</section>`;
     }
   } else if (d.phase === 'reveal') {
     const Q = d.question, a = d.answer, ok = a && a.choice === Q.correct, k = d.q % 5;
-    body = `<section class="feedback ${ok ? 'good' : 'bad'}"><h2>${ok ? 'VOLLTREFFER!' : a ? 'DANEBEN – ANDERE ZEITLINIE.' : 'FUNKSTILLE – KEINE ANTWORT'}</h2>
-      ${ok ? `<p class="big">+${fmt(a.points)} Punkte</p>` : ''}<p>${esc(ok ? GOOD[k] : BAD[k])}</p></section>
-      <section class="stage">${questionHead(d)}<h2 class="qtext">${esc(Q.text)}</h2>${optionsHtml(d, false)}
-      <div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div></section>
-      ${d.solo ? `<section class="card mine-score"><b>${esc(d.me.name)}</b> · ${fmt(d.me.score)} Punkte · Frage ${d.q + 1} von ${d.total}
-        <button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${d.q + 1 >= d.total ? 'Ergebnis zeigen →' : 'Nächste Frage →'}</button></section>`
-      : `<section class="card mine-score">Euer Team: <b>${esc(d.me.name)}</b> · Platz ${ranked(d.teams).find(t => t.id === d.me.id)?.place ?? '–'} · ${fmt(d.me.score)} Punkte
-      ${d.q + 1 >= d.total - 2 && d.q + 1 < d.total ? '<p class="muted">Letzte Sektoren! Die ganze Flotte drückt die Daumen.</p>' : ''}</section>`}`;
+    body = `<section class="feedback ${ok ? 'good' : 'bad'}"><h2>${t(ok ? 'VOLLTREFFER!' : a ? 'DANEBEN – ANDERE ZEITLINIE.' : 'FUNKSTILLE – KEINE ANTWORT')}</h2>
+      ${ok ? `<p class="big">${t('+{p} Punkte', { p: fmt(a.points) })}</p>` : ''}<p>${esc(t(ok ? GOOD[k] : BAD[k]))}</p></section>
+      <section class="stage">${questionHead(d)}${qtext(Q)}${optionsHtml(d, false)}
+      ${explain(Q)}</section>
+      ${d.solo ? `<section class="card mine-score"><b>${esc(d.me.name)}</b> · ${t('{p} Punkte', { p: fmt(d.me.score) })} · ${t('Frage {n} von {total}', { n: d.q + 1, total: d.total })}
+        <button class="btn primary big" data-act="next" ${S.busy ? 'disabled' : ''}>${t(d.q + 1 >= d.total ? 'Ergebnis zeigen →' : 'Nächste Frage →')}</button></section>`
+      : `<section class="card mine-score">${t('Euer Team')}: <b>${esc(d.me.name)}</b> · ${t('Platz {p}', { p: ranked(d.teams).find(x => x.id === d.me.id)?.place ?? '–' })} · ${t('{p} Punkte', { p: fmt(d.me.score) })}
+      ${d.q + 1 >= d.total - 2 && d.q + 1 < d.total ? `<p class="muted">${t('Letzte Sektoren! Die ganze Flotte drückt die Daumen.')}</p>` : ''}</section>`}`;
   } else body = viewFinished(d, 'team');
   return `${header(`<span class="pill">${avatarHtml(d.me.avatar, d.me.id, 's')} ${esc(d.me.name)}</span>`)}<main class="team">${body}</main>`;
 }
@@ -437,25 +463,25 @@ function viewSpectator(d) {
   if (d.phase === 'finished') return viewFinished(d, 'spectator');
   const Q = d.question;
   if (!Q?.text) return `<section class="stage">${progress(d)}${countdownBlock(d)}</section>`;
-  return `<section class="stage">${progress(d)}${questionHead(d)}<h2 class="qtext">${esc(Q.text)}</h2>${picture(Q)}${optionsHtml(d, false)}
-   ${d.phase === 'reveal' ? `<div class="explain"><small>LOGBUCHEINTRAG</small><p>${esc(Q.explanation)}</p></div>` : ''}</section>
-   <section class="card"><h3>RANGLISTE · LIVE</h3>${scoreList(d, 10)}</section>`;
+  return `<section class="stage">${progress(d)}${questionHead(d)}${qtext(Q)}${picture(Q)}${optionsHtml(d, false)}
+   ${d.phase === 'reveal' ? explain(Q) : ''}</section>
+   <section class="card"><h3>${t('RANGLISTE · LIVE')}</h3>${scoreList(d, 10)}</section>`;
 }
 // Loading screen for team / projector devices: shows which step is running, and help if it takes long.
 const BOOT_T0 = Date.now();
 function bootView() {
-  const steps = [['lib', 'Funkmodul laden'], ['broker', 'Subraum-Relais anfunken'], ['host', `Brücke ${ROOM} rufen`]];
+  const steps = [['lib', t('Funkmodul laden')], ['broker', t('Subraum-Relais anfunken')], ['host', t('Brücke {code} rufen', { code: esc(ROOM) })]];
   const cur = NET?.stage ? NET.stage() : 'lib', at = Math.max(0, steps.findIndex(s => s[0] === cur));
   const secs = Math.floor((Date.now() - BOOT_T0) / 1000);
-  const slow = secs >= 12 ? `<div class="boot-help"><p>Das dauert länger als üblich. Meist hilft eines davon:</p>
-    <ul><li>WLAN aus- und mobile Daten einschalten (manche WLANs blockieren die Direktverbindung).</li>
-    <li>Prüfen, ob der Spielcode <b>${esc(ROOM)}</b> stimmt und die Spielleitung das Quiz geöffnet hat.</li></ul>
-    <div class="row"><button class="btn primary" onclick="location.reload()">Neu laden</button><a class="btn ghost" href="./">Anderen Code eingeben</a></div></div>` : '';
+  const slow = secs >= 12 ? `<div class="boot-help"><p>${t('Das dauert länger als üblich. Meist hilft eines davon:')}</p>
+    <ul><li>${t('WLAN aus- und mobile Daten einschalten (manche WLANs blockieren die Direktverbindung).')}</li>
+    <li>${t('Prüfen, ob der Spielcode <b>{code}</b> stimmt und die Spielleitung das Quiz geöffnet hat.', { code: esc(ROOM) })}</li></ul>
+    <div class="row"><button class="btn primary" onclick="location.reload()">${t('Neu laden')}</button><a class="btn ghost" href="./">${t('Anderen Code eingeben')}</a></div></div>` : '';
   return `<div class="boot"><div class="boot-panel"><div class="boot-sweep" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <small>Verbindungsaufbau · Code ${esc(ROOM)}</small><h2>Kanal wird geöffnet</h2>
-    <ol class="boot-steps">${steps.map(([, t], i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${t}</li>`).join('')}</ol>${slow}</div></div>`;
+    <small>${t('Verbindungsaufbau · Code {code}', { code: esc(ROOM) })}</small><h2>${t('Kanal wird geöffnet')}</h2>
+    <ol class="boot-steps">${steps.map(([, label], i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${label}</li>`).join('')}</ol>${slow}${langSwitch()}</div></div>`;
 }
-const err = () => (S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : '');
+const err = () => (S.error ? `<p class="err" role="alert">${esc(msg(S.error))}</p>` : '');
 
 // ---------- render ----------
 let zoomSrc = '';
@@ -471,11 +497,11 @@ function render(force = false) {
   let html;
   if (!ROOM) html = viewHome();
   else if (!S.data) html = S.error
-    ? `${header()}<main class="team"><section class="card center"><h2>Spiel nicht gefunden</h2><p>${esc(S.error)}</p><a class="btn primary" href="./">Zur Startseite</a></section></main>`
+    ? `${header()}<main class="team"><section class="card center"><h2>${t('Spiel nicht gefunden')}</h2><p>${esc(msg(S.error))}</p><a class="btn primary" href="./">${t('Zur Startseite')}</a></section></main>`
     : bootView();
   else html = role() === 'screen' ? viewScreen() : role() === 'host' ? viewHost() : viewTeam();
   if (S.toast) html += `<div class="toast" role="status">${esc(S.toast)}</div>`;
-  if (zoomSrc) html += `<div class="zoom" data-unzoom><img src="${zoomSrc}" alt="Vergrößertes Fragenbild"><button class="btn" data-unzoom>Schließen</button></div>`;
+  if (zoomSrc) html += `<div class="zoom" data-unzoom><img src="${zoomSrc}" alt="${t('Vergrößertes Fragenbild')}"><button class="btn" data-unzoom>${t('Schließen')}</button></div>`;
   if (!force && html === S.lastHtml) { tick(); return; }
   // keep focus / typing state across re-renders (the exact same control, e.g. the 3rd mission card)
   const active = document.activeElement, sel = active && 'selectionStart' in active ? [active.selectionStart, active.selectionEnd] : null;
@@ -510,9 +536,10 @@ $app.addEventListener('click', async e => {
     if (!r) { S.data.answer = null; render(true); }
     return;
   }
-  if (t.dataset.kick) { if (confirm('Dieses Team entfernen?')) act('kick', { team: t.dataset.kick }); return; }
+  if (t.dataset.kick) { if (confirm(tr('Dieses Team entfernen?'))) act('kick', { team: t.dataset.kick }); return; }
   if (t.dataset.diploma) { const team = S.data.teams.find(x => x.id === t.dataset.diploma); if (team) diploma(team); return; }
-  if (t.dataset.copy) { copy(t.dataset.copy === 'host' ? hostUrl() : joinUrl(), t.dataset.copy === 'host' ? (NET?.kind === 'local' ? 'Leitungslink kopiert – damit steuert ihr das Quiz auch vom Handy, solange dieses Fenster offen ist.' : 'Leitungslink kopiert – gut aufheben, er öffnet die Spielleitung.') : 'Link für Teams kopiert.'); return; }
+  if (t.dataset.copy) { copy(t.dataset.copy === 'host' ? hostUrl() : joinUrl(), tr(t.dataset.copy === 'host' ? (NET?.kind === 'local' ? 'Leitungslink kopiert – damit steuert ihr das Quiz auch vom Handy, solange dieses Fenster offen ist.' : 'Leitungslink kopiert – gut aufheben, er öffnet die Spielleitung.') : 'Link für Teams kopiert.')); return; }
+  if (t.dataset.lang) { setLang(t.dataset.lang); render(true); return; }
   if (t.dataset.groupTab) { S.join.group = t.dataset.groupTab; render(true); return; }
   if (t.dataset.avatar) { S.join.avatar = t.dataset.avatar; render(true); return; }
   switch (t.dataset.act) {
@@ -531,7 +558,7 @@ $app.addEventListener('click', async e => {
       S.busy = true; S.error = ''; render(true);
       try {
         const { createRoom, Engine } = await import('./engine.mjs');
-        const name = S.home.solo.trim().length >= 2 ? S.home.solo : 'Kadett';
+        const name = S.home.solo.trim().length >= 2 ? S.home.solo : tr('Kadett');
         const r = createRoom({ pack: S.home.pack, prize: 'Ruhm und Ehre', solo: true });
         const j = new Engine(r.code).request({ method: 'POST', body: { action: 'join', name, avatar: 'vulkanier' } });
         if (j.status !== 200) throw new Error(j.body.error);
@@ -542,8 +569,8 @@ $app.addEventListener('click', async e => {
     }
     case 'join': {
       const J = S.join, avatar = J.avatar === 'upload' ? J.upload : J.avatar;
-      if (J.name.trim().length < 2) { S.error = 'Bitte einen Teamnamen mit mindestens 2 Zeichen eingeben.'; render(true); return; }
-      if (!avatar) { S.error = 'Bitte ein Teambild auswählen.'; render(true); return; }
+      if (J.name.trim().length < 2) { S.error = tr('Bitte einen Teamnamen mit mindestens 2 Zeichen eingeben.'); render(true); return; }
+      if (!avatar) { S.error = tr('Bitte ein Teambild auswählen.'); render(true); return; }
       const r = await act('join', { name: J.name, avatar });
       if (r?.token) { S.teamToken = r.token; S.kicked = false; store.set('warp-team-' + ROOM, r.token); await poll(); }
       return;
@@ -553,7 +580,7 @@ $app.addEventListener('click', async e => {
     case 'settings': {
       const pack = S.lobbyPack ?? S.data.pack, prize = S.lobbyPrize ?? S.data.prize;
       const r = await act('settings', { pack, prize });
-      if (r) { S.lobbyPack = null; S.lobbyPrize = null; S.settingsOpen = false; toast('Gespeichert.'); render(true); } return;
+      if (r) { S.lobbyPack = null; S.lobbyPrize = null; S.settingsOpen = false; toast(tr('Gespeichert.')); render(true); } return;
     }
     case 'restart': { const pack = S.restartPack ?? Math.min(S.data.pack + 1, MISSIONS.length - 1); S.restartPack = null; act('restart', { pack }); return; }
     case 'music': toggleMusic(); return;
@@ -564,9 +591,9 @@ $app.addEventListener('click', async e => {
 $app.addEventListener('input', e => {
   const t = e.target;
   if (t.matches('[data-teamname]')) S.join.name = t.value;
-  else if (t.matches('[data-prize]')) S.home.prize = t.value;
+  else if (t.matches('[data-prize]')) S.home.prize = prizeIn(t.value);
   else if (t.matches('[data-soloname]')) S.home.solo = t.value;
-  else if (t.matches('[data-lobbyprize]')) S.lobbyPrize = t.value;
+  else if (t.matches('[data-lobbyprize]')) S.lobbyPrize = prizeIn(t.value);
   else if (t.name === 'code') { t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); S.home.code = t.value; }
 });
 $app.addEventListener('change', e => {
@@ -579,7 +606,7 @@ $app.addEventListener('change', e => {
 $app.addEventListener('submit', e => {
   e.preventDefault();
   const code = (S.home.code || '').toUpperCase();
-  if (!/^[A-Z2-9]{6}$/.test(code)) { S.error = 'Bitte den sechsstelligen Spielcode eingeben.'; render(true); return; }
+  if (!/^[A-Z2-9]{6}$/.test(code)) { S.error = tr('Bitte den sechsstelligen Spielcode eingeben.'); render(true); return; }
   location.href = './?room=' + code;
 });
 $app.addEventListener('toggle', e => { if (e.target.matches?.('[data-settings]')) S.settingsOpen = e.target.open; }, true);
